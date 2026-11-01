@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#07151c" />
+  <title>MATE – Adatkezelési tájékoztató</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <style>
+    body { padding: 28px 18px 60px; }
+    main { width: min(820px, 100%); margin: 0 auto; padding: 30px; }
+    h1 { margin-bottom: 18px; }
+    h2 { margin: 26px 0 9px; }
+    p, li { color: var(--muted); line-height: 1.65; }
+    .meta { margin: 0 0 24px; color: var(--aqua); font: 600 .85rem/1.6 ui-monospace, monospace; letter-spacing: .04em; }
+    .notice { padding: 14px 16px; border: 1px solid rgba(55,225,215,.28); border-radius: 13px; background: rgba(30,180,180,.08); }
+    code { color: var(--aqua); }
+  </style>
+</head>
+<body>
+  <main class="glass">
+    <span class="eyebrow">MATE · ADATVÉDELEM</span>
+    <h1>Adatkezelési tájékoztató</h1>
+    <p class="meta">Verzió: 1.0 · Hatályos: 2026. november 1.</p>
+    <p class="notice">Ez a tájékoztató elmagyarázza, hogyan kezeli Kálmán Kata a MATE feladat- és szokáskövető használatakor megadott adatokat. A MATE jelenleg személyes, hobbi célú projekt: díjmentes, nem jelenít meg hirdetéseket, és nem származik belőle bevételem vagy haszonszerzésem. A MATE helyi módban használható Google-belépés nélkül. A Google-belépés és a felhőszinkron csak külön, önkéntes hozzájárulással működhet; amíg ezt az alkalmazásban nem kapcsoljuk be, ezek a funkciók nem érhetők el.</p>
+
+    <h2>1. Ki kezeli az adatokat?</h2>
+    <p>Adatkezelő: Kálmán Kata. Adatvédelmi kérdés, joggyakorlás vagy tiltakozás: <a href="mailto:kate.kalman@gmail.com">kate.kalman@gmail.com</a>.</p>
+
+    <h2>2. Milyen adatokat kezel a MATE?</h2>
+    <ul>
+      <li><strong>Helyi appadatok:</strong> feladatok, kategóriák, projektek, határidők, jegyzetek, Habit-listák, napi teljesítések és fókuszidő-munkamenetek.</li>
+      <li><strong>Helyi technikai adatok:</strong> az alkalmazás mentett állapota, szükség esetén helyreállítási vagy fiókváltási másolatok, valamint a felhőhozzájárulás helyi állapota, verziója és időpontja.</li>
+      <li><strong>Google-belépési adatok, ha a felhőfunkciót bekapcsoljuk és hozzájárulsz:</strong> Firebase-fiókazonosító, e-mail-cím és – ha a Google átadja – megjelenített név, továbbá a hitelesítéshez szükséges technikai adatok.</li>
+      <li><strong>Szolgáltatói technikai adatok:</strong> a Firebase Authentication IP-címet és böngésző-azonosító adatokat kezelhet a belépéshez, biztonsághoz és visszaélések megelőzéséhez. A Firebase klienskódja a Google CDN-jéről töltődik le, amikor felhőhozzájárulást adsz, vagy egy korábban összekapcsolt fiókot kezelsz; a letöltési kérés technikai adatait a Google kezelheti.</li>
+      <li><strong>Webhely-hozzáférési adat:</strong> a GitHub Pages a látogatók IP-címét biztonsági célból naplózza a GitHub tájékoztatása szerint.</li>
+    </ul>
+    <p>A feladat- és szokásnevek, valamint a jegyzetek szabad szöveges mezők. A MATE nem kér egészségügyi, pénzügyi vagy más különleges adatot, és nem elemzi ilyen adatokra a bejegyzéseket. Kérjük, ne írj be szükségtelenül érzékeny adatot vagy más személyre vonatkozó bizalmas információt.</p>
+    <p>A MATE nem használ Google Analytics-et, hirdetési célú követést vagy profilalkotást.</p>
+
+    <h2>3. Miért és milyen jogalapon kezeljük az adatokat?</h2>
+    <p><strong>Helyi mód – az alkalmazás működtetése és mentése:</strong> a feladatok, szokások és előzmények azért maradnak az adott böngészőben, hogy a kifejezetten kért tracker a lap bezárása és későbbi megnyitása után is használható legyen. A személyes adatok helyi kezelésének jogalapja az adatkezelő jogos érdeke a MATE alapvető, tartós trackerfunkciójának biztosítására (GDPR 6. cikk (1) bekezdés f) pont). A böngésző tárhelyét a MATE kizárólag ehhez a mentési funkcióhoz használja, nem analitikára vagy reklámra.</p>
+    <p><strong>Választható Google-belépés és felhőszinkron:</strong> a Google-fiókadatok és az általad szinkronra kiválasztott MATE-adatok kezelésének célja a belépés, az eszközök közötti szinkron és a felhőfiók kezelése. Jogalapja a GDPR 6. cikk (1) bekezdés a) pontja szerinti önkéntes, konkrét és tájékozott hozzájárulás. A hozzájárulás előtt megnyitott tájékoztató melletti külön, alapértelmezetten üres jelölőnégyzettel adható meg. Ha nemet mondasz, a Google-belépés nem indul el, és helyi módban használhatod tovább a MATE-ot.</p>
+    <p>A helyi mentés és a felhőszinkron két külön cél. A felhőhozzájárulás visszavonása nem törli a jelenlegi eszköz helyi MATE-adatait; azokat külön törölheted. A felhőhozzájárulás visszavonása elindítja a Firebase-fiók és a MATE felhőadatainak törlését. A más eszközökön lévő helyi példányokat azon az eszközön kell törölni.</p>
+
+    <h2>4. Hol tárolódnak az adatok, kik férhetnek hozzá?</h2>
+    <p>Helyi módban az appadatok az általad használt böngészőprofilban maradnak; a MATE alkalmazás üzemeltetője nem kapja meg a feladat- és szokásadatok tartalmát. A helyi böngészőtár nem titkosított jelszótár, ezért az eszközhöz vagy böngészőprofilhoz hozzáférő más személyek is láthatják az adatokat. Közös eszközön használj saját, zárolt profilt.</p>
+    <p>Ha a felhőszinkron elérhetővé válik és hozzájárulsz, a MATE a Firebase Authenticationt és Cloud Firestore-t használja. A Firestore-adatbázis a tulajdonos által kiválasztott eur3 (európai több régiós) helyen van; replikái Belgiumban, Hollandiában és Finnországban találhatók. A Firebase Authentication a Google szerint kizárólag az Egyesült Államok adatközpontjaiban működik, ezért a hitelesítési adatok ott is kezelhetők. A Firestore-szabályok a belépett felhasználót csak a saját Firebase-azonosítója alatti adatokhoz engedik hozzáférni.</p>
+    <p>A Google aktuális <a href="https://firebase.google.com/terms" target="_blank" rel="noopener noreferrer">Firebase-feltételei</a> a Cloud Firestore-t és Firebase Authenticationt a Google Cloud Platform feltételei alá sorolják. A Google szerint ezekre a szolgáltatásokra a <a href="https://cloud.google.com/terms/data-processing-addendum" target="_blank" rel="noopener noreferrer">Google Cloud adatfeldolgozási kiegészítése</a> vonatkozik. A Google tájékoztatása szerint az EGT-ből az Egyesült Államokba irányuló adattovábbításnál az EU–USA Adatvédelmi Keretrendszer tanúsítása, illetve a Google Cloud-feltételekben meghatározott szerződéses garanciák – például standard szerződési feltételek, ahol alkalmazandók – biztosíthatják az adattovábbítás kereteit. A Google részletei a <a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener noreferrer">Firebase adatvédelmi tájékoztatójában</a> olvashatók.</p>
+    <p>A weboldalt a GitHub Pages szolgálja ki. A GitHub a webhely látogatásakor IP-címet naplóz biztonsági célból, és saját adatkezelési tájékoztatója szerint több országban kezelhet adatokat. Részletek a GitHub <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener noreferrer">adatvédelmi tájékoztatójában</a>.</p>
+
+    <h2>5. Meddig őrizzük meg az adatokat?</h2>
+    <ul>
+      <li><strong>Helyi MATE-adatok:</strong> addig maradnak az adott böngészőprofilban, amíg azokat az alkalmazás Beállítások oldalán nem törlöd, vagy el nem távolítod a böngésző webhelyadatait. A böngészőadatok törlése az appadatok elvesztésével járhat.</li>
+      <li><strong>Helyi hozzájárulási és technikai másolatok:</strong> a helyi törlésig vagy a böngésző webhelyadatainak eltávolításáig maradhatnak meg. Az app törlési funkciója a MATE által használt helyi adatkulcsokat és helyreállítási másolatokat is eltávolítja.</li>
+      <li><strong>Firebase-fiók és felhőadatok:</strong> aktív fiók mellett a fiók törléséig őrizzük. A fiók törlését az alkalmazás indítja el; a Google Cloud adatfeldolgozási kiegészítése szerint a Google a törlési utasításnak észszerűen mielőbb, legfeljebb 180 napon belül tesz eleget, a jogszabályi kivételek figyelembevételével. A Firebase Authentication a naplózott IP-címeket néhány hétig őrzi; az egyéb hitelesítési adatokat a törlési kérés után legfeljebb 180 napon belül távolítja el az aktív és biztonsági mentési rendszereiből.</li>
+      <li><strong>GitHub Pages biztonsági naplói:</strong> a GitHub saját megőrzési szabályai szerint. A MATE üzemeltetője nem állapítja meg és nem kezeli a GitHub szervernaplóinak megőrzési idejét.</li>
+    </ul>
+    <p>A felhőfiók törlése nem törli automatikusan az adatokat más eszközök helyi böngészőprofiljaiból. A felhőfiók törléséhez a Google újbóli hitelesítést kérhet; ha a törlési folyamat megszakad, az alkalmazás jelezheti, hogy a törlést az eredeti Google-fiókkal újra be kell fejezni.</p>
+
+    <h2>6. Milyen jogaid vannak?</h2>
+    <p>Kérheted a rád vonatkozó adatokhoz való hozzáférést, azok helyesbítését, törlését vagy kezelésük korlátozását, valamint a jogszabályban biztosított esetekben az adathordozhatóságot. A jogos érdeken alapuló helyi adatkezelés ellen a saját helyzeteddel kapcsolatos okból tiltakozhatsz. A felhőszinkronhoz adott hozzájárulást bármikor visszavonhatod az alkalmazásban; ez nem érinti a visszavonás előtti adatkezelés jogszerűségét.</p>
+    <p>Helyi adataidat az alkalmazás Beállítások oldalán exportálhatod vagy törölheted. Felhőadat törléséhez használd a fiók törlése vagy a hozzájárulás visszavonása funkciót. Más eszköz helyi másolatát azon az eszközön töröld. Kérésedet a <a href="mailto:kate.kalman@gmail.com">kate.kalman@gmail.com</a> címen is benyújthatod.</p>
+    <p>Ha úgy gondolod, hogy az adatkezelés sérti a jogaidat, panaszt tehetsz a Nemzeti Adatvédelmi és Információszabadság Hatóságnál (NAIH): <a href="https://www.naih.hu/" target="_blank" rel="noopener noreferrer">naih.hu</a>.</p>
+
+    <h2>7. Adatbiztonság és automatizált döntések</h2>
+    <p>A webhely HTTPS-kapcsolatot használ. A felhőfunkciók bekapcsolásakor a Google-belépés, a Firebase Security Rules és a felhasználónként korlátozott Firestore-hozzáférés védi a felhőadatokat. A Firebase webes konfigurációja nyilvános kliensazonosítókat tartalmaz; titkos szerverkulcsot vagy Firebase Admin SDK hitelesítő adatot nem tárolunk a klienskódban. A helyi böngészőtár nem kap külön eszközszintű titkosítást.</p>
+    <p>A MATE nem végez automatizált döntéshozatalt vagy profilalkotást, amely rád nézve joghatással vagy hasonlóan jelentős hatással járna.</p>
+
+    <h2>8. A tájékoztató változása</h2>
+    <p>A friss tájékoztató ezen az oldalon jelenik meg a verziószámmal és a hatálybalépés napjával. A felhőszinkront vagy annak célját érintő lényeges változás esetén az alkalmazás az új verzió megismerését és a felhőkezeléshez szükséges hozzájárulás újbóli megadását kérheti, mielőtt a szinkron folytatódik. A helyi adatkezelést érintő változásról az alkalmazásban vagy ezen az oldalon adunk előzetes tájékoztatást.</p>
+
+    <p><a class="button" href="./index.html">Vissza a MATE-hoz</a></p>
+  </main>
+</body>
+</html>

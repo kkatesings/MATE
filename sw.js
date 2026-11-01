@@ -1,11 +1,15 @@
-const CACHE_NAME = 'mate-shell-v1';
+const CACHE_NAME = 'mate-shell-v3';
 const APP_SHELL = [
   './index.html',
   './styles.css',
   './manifest.webmanifest',
   './src/data.js',
   './src/i18n.js',
+  './src/firebase-config.js',
+  './src/privacy-config.js',
   './src/analytics.js',
+  './src/matt.js',
+  './src/cloud-sync.js',
   './src/screens.js',
   './src/app.js',
   './icons/mate-192.svg',

@@ -10,3 +10,7 @@
 - Replaced the Welcome center mark with a slow atom-like animation and updated the Home no-task prompt per browser feedback.
 - Added a quick-start README and recorded isolated verification results and the live-browser tooling limitation.
 - Added Android PWA metadata, install prompt handling, atom launcher icons, and service-worker caching for offline app-shell use.
+- Fixed habit form submissions so Add habit and Save changes are handled by the app without a GET page reload; new habits now persist and return to the Habits tab.
+- Added week-by-week habit history with selectable past days and backfilled check-ins.
+- Added daily focus-session details and monthly focus columns labeled with full Monday–Sunday date ranges.
+- Simplified the Stats range selector to Daily, Weekly, Monthly, and Yearly.

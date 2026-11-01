@@ -21,7 +21,7 @@
   function t(key) { return catalogs[locale()][key] || catalogs.en[key] || key; }
   function label(value) {
     const key = String(value || '').toLocaleLowerCase().replace(/[^a-z]/g,'');
-    return t(key) || String(value || '');
+    return catalogs[locale()][key] || catalogs.en[key] || String(value || '');
   }
   MATE.i18n = { catalogs, locale, t, label };
 })(window);

@@ -4,10 +4,11 @@
   const data = MATE.data;
   const screens = MATE.screens;
   const analytics = MATE.analytics;
-  const appState = { page: 'welcome', taskFilter: 'open', statsPeriod: 'weekly', customStart: '', customEnd: '', welcomeGreeting: '', homeGreeting: '' };
+  const appState = { page: 'welcome', taskFilter: 'open', statsPeriod: 'weekly', welcomeGreeting: '', homeGreeting: '', habitWeekOffset: 0, selectedHabitDate: '' };
   let taskSubmitting = false;
   let pendingDeleteHabit = null;
   let installPrompt = null;
+  let observedHabitDate = data.habitDateKey();
 
   function toast(message, kind = 'success') {
     const region = document.getElementById('toast-region');
@@ -17,7 +18,14 @@
   function render() { screens.render(appState.page, appState); }
   function navigate(page) {
     if (page === 'home') appState.homeGreeting = data.greeting();
+    let habitChoice = null;
+    if (page === 'habits') {
+      appState.habitWeekOffset = 0;
+      appState.selectedHabitDate = data.habitDateKey();
+      habitChoice = data.prepareHabitDay();
+    }
     appState.page = page; render();
+    if (habitChoice) openModal(screens.habitDayChoice(habitChoice));
     if (page === 'task-form') root.setTimeout(() => document.getElementById('task-name')?.focus(), 0);
   }
   function openModal(markup) {
@@ -65,7 +73,7 @@
   }
   function exportCsv() {
     const period = appState.statsPeriod;
-    const summary = analytics.summarize(period, appState.customStart, appState.customEnd);
+    const summary = analytics.summarize(period);
     const rows = [['record_type','range_start','range_end','metric','value','task','category','session_id','started_at','ended_at','duration_ms','range_duration_ms','date']];
     const metric = (name,value) => rows.push(['stat',summary.range.start,summary.range.end,name,value,'','','','','','','','']);
     const state = data.getState();
@@ -97,6 +105,43 @@
       toast('Use your browser menu to install MATE on this phone.');
     }
   }
+  function saveHabitCategoryForm(form) {
+    if (!form) return;
+    const fields = new FormData(form);
+    const error = document.getElementById('habit-category-error');
+    const originalName = String(fields.get('originalName') || '');
+    try {
+      const name = originalName ? data.editCategory(originalName, fields.get('name')) : data.addCategory(fields.get('name'));
+      closeModal();
+      appState.page = 'habit-categories';
+      render();
+      toast(originalName ? `Category changed to ${name}. Past check-ins keep their old label.` : `Category added: ${name}.`);
+    } catch (err) {
+      if (error) error.textContent = err.message;
+      document.getElementById('habit-category-name')?.focus();
+    }
+  }
+  function saveHabitForm(form) {
+    if (!form) return;
+    const fields = new FormData(form);
+    const error = document.getElementById('habit-form-error');
+    const id = String(fields.get('id') || '');
+    try {
+      if (id) data.editHabit(id, fields.get('name'), fields.get('category'), fields.get('newCategory'));
+      else data.addHabit(fields.get('name'), fields.get('category'), fields.get('newCategory'));
+      if (!id) {
+        appState.page = 'habits';
+        appState.habitWeekOffset = 0;
+        appState.selectedHabitDate = data.habitDateKey();
+      }
+      closeModal();
+      render();
+      toast(id ? 'Habit updated. Today’s list is current; earlier snapshots stay intact.' : 'Habit added to today’s list. New habit, no dramatic vows required.');
+    } catch (err) {
+      if (error) error.textContent = err.message;
+      document.getElementById('habit-name')?.focus();
+    }
+  }
 
   document.addEventListener('click', event => {
     const target = event.target.closest('button,[data-nav],[data-action]'); if (!target) return;
@@ -104,7 +149,7 @@
     const action = target.dataset.action;
     if (!action) return;
     switch (action) {
-      case 'welcome': event.preventDefault(); appState.page = 'welcome'; render(); break;
+      case 'welcome': event.preventDefault(); appState.welcomeGreeting = data.welcomeQuote(); appState.page = 'welcome'; render(); break;
       case 'enter-home': navigate('home'); break;
       case 'add-task': appState.page = 'task-form'; render(); root.setTimeout(()=>document.getElementById('task-name')?.focus(),0); break;
       case 'add-another': closeModal(); appState.page = 'task-form'; render(); root.setTimeout(()=>document.getElementById('task-name')?.focus(),0); break;
@@ -126,6 +171,40 @@
       }
       case 'resolve-timer': resolveTimer(target.dataset.done === 'true'); break;
       case 'task-filter': appState.taskFilter = target.dataset.taskFilter; render(); break;
+      case 'copy-habit-day': {
+        const copied = data.copyHabitDay(target.dataset.date, data.habitDateKey());
+        closeModal();
+        appState.page = 'habits';
+        appState.habitWeekOffset = 0;
+        appState.selectedHabitDate = data.habitDateKey();
+        render();
+        toast(copied ? 'Copied. Every habit starts unchecked.' : 'Today’s habit list is already set.', copied ? 'success' : 'error');
+        break;
+      }
+      case 'decline-habit-copy':
+        data.declineHabitDay(data.habitDateKey());
+        closeModal();
+        appState.page = 'habits';
+        appState.habitWeekOffset = 0;
+        appState.selectedHabitDate = data.habitDateKey();
+        render();
+        toast('Fresh list. Add habits when ready.');
+        break;
+      case 'manage-habit-categories': appState.page = 'habit-categories'; render(); break;
+      case 'add-habit-category': openModal(screens.habitCategoryForm(null)); break;
+      case 'edit-habit-category': openModal(screens.habitCategoryForm(target.dataset.category)); break;
+      case 'delete-habit-category': openModal(screens.confirmDeleteHabitCategory(target.dataset.category)); break;
+      case 'confirm-delete-habit-category': {
+        try {
+          const fallback = data.deleteCategory(target.dataset.category);
+          closeModal();
+          appState.page = 'habit-categories';
+          render();
+          toast(`Category removed. Current habits moved to ${fallback}; past check-ins were kept.`);
+        } catch (err) { toast(err.message, 'error'); }
+        break;
+      }
+      case 'save-habit-category': event.preventDefault(); saveHabitCategoryForm(document.getElementById('habit-category-form')); break;
       case 'new-habit': openModal(screens.habitForm(null)); break;
       case 'edit-habit': {
         const habit = data.getState().habits.find(h=>h.id===target.dataset.id&&!h.deletedAt);
@@ -141,10 +220,27 @@
         if (habit) toast(`${habit.name} removed from the active list. Its history stays put.`);
         break;
       }
-      case 'toggle-habit': data.toggleHabit(target.dataset.id); render(); break;
+      case 'toggle-habit': data.toggleHabit(target.dataset.id, target.dataset.date || data.habitDateKey()); render(); break;
+      case 'select-habit-date':
+        if (target.dataset.date && target.dataset.date <= data.habitDateKey()) { appState.selectedHabitDate = target.dataset.date; render(); }
+        break;
+      case 'previous-habit-week':
+        appState.habitWeekOffset = Math.min(0, Number(appState.habitWeekOffset) || 0) - 1;
+        appState.selectedHabitDate = data.dateKey(analytics.shiftDay(analytics.startOfWeek(data.dayDate(data.habitDateKey())), appState.habitWeekOffset * 7));
+        render(); break;
+      case 'next-habit-week':
+        if ((Number(appState.habitWeekOffset) || 0) < 0) {
+          appState.habitWeekOffset += 1;
+          appState.selectedHabitDate = appState.habitWeekOffset === 0
+            ? data.habitDateKey()
+            : data.dateKey(analytics.shiftDay(analytics.startOfWeek(data.dayDate(data.habitDateKey())), appState.habitWeekOffset * 7));
+          render();
+        }
+        break;
       case 'close-modal': closeModal(); break;
       case 'modal-backdrop': if (event.target === target) closeModal(); break;
       case 'export-csv': exportCsv(); break;
+      case 'save-habit': event.preventDefault(); saveHabitForm(document.getElementById('habit-form')); break;
       case 'install-app': installApp(); break;
     }
   });
@@ -164,22 +260,28 @@
         taskSubmitting = false; if (button) button.disabled = false; error.textContent = err.message; input?.focus();
       }
     } else if (form.id === 'habit-form') {
-      event.preventDefault(); const fields = new FormData(form); const error = document.getElementById('habit-form-error');
-      try {
-        if (fields.get('id')) data.editHabit(fields.get('id'),fields.get('name'),fields.get('category'));
-        else data.addHabit(fields.get('name'),fields.get('category'));
-        closeModal(); render(); toast(fields.get('id') ? 'Habit updated. Today’s list is current; earlier snapshots stay intact.' : 'Habit added to today’s list. New habit, no dramatic vows required.');
-      } catch (err) { error.textContent = err.message; document.getElementById('habit-name')?.focus(); }
+      event.preventDefault(); saveHabitForm(form);
+    } else if (form.id === 'habit-category-form') {
+      event.preventDefault(); saveHabitCategoryForm(form);
     }
   });
 
   document.addEventListener('change', event => {
+    if (event.target.id === 'habit-category') {
+      const field = document.getElementById('habit-new-category-field');
+      const input = document.getElementById('habit-new-category');
+      const creatingCategory = event.target.value === data.NEW_CATEGORY_VALUE;
+      if (field) field.hidden = !creatingCategory;
+      if (input) {
+        input.required = creatingCategory;
+        if (creatingCategory) input.focus();
+        else input.value = '';
+      }
+    }
     if (event.target.name === 'statsPeriod') {
       appState.statsPeriod = event.target.value;
-      if (appState.statsPeriod === 'custom' && !appState.customStart) { const range = analytics.periodRange('weekly'); appState.customStart = range.start; appState.customEnd = data.dateKey(); }
       render();
-    } else if (event.target.name === 'customStart') { appState.customStart = event.target.value; render(); }
-    else if (event.target.name === 'customEnd') { appState.customEnd = event.target.value; render(); }
+    }
   });
 
   document.addEventListener('keydown', event => {
@@ -188,6 +290,17 @@
   });
 
   function updateClock() {
+    const currentHabitDate = data.habitDateKey();
+    if (currentHabitDate !== observedHabitDate) {
+      observedHabitDate = currentHabitDate;
+      if (appState.page === 'habits') {
+        appState.habitWeekOffset = 0;
+        appState.selectedHabitDate = currentHabitDate;
+        const habitChoice = data.prepareHabitDay();
+        render();
+        if (habitChoice && !document.getElementById('modal-root').innerHTML) openModal(screens.habitDayChoice(habitChoice));
+      }
+    }
     const timer = data.getState().activeTimer; if (!timer || timer.stoppedAt) return;
     const ms = Math.max(0, Date.now() - new Date(timer.startedAt).getTime());
     const total = Math.floor(ms/1000); const clock = [Math.floor(total/3600),Math.floor(total%3600/60),total%60].map(n=>String(n).padStart(2,'0')).join(':');
@@ -200,7 +313,8 @@
     }
   }
 
-  appState.welcomeGreeting = data.greeting();
+  appState.welcomeGreeting = data.welcomeQuote();
+  appState.selectedHabitDate = data.habitDateKey();
   render();
   if (data.getState().activeTimer?.stoppedAt) showTimerResolution();
   root.setInterval(updateClock, 1000);

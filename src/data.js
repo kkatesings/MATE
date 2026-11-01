@@ -3,8 +3,9 @@
   'use strict';
   const MATE = root.MATE = root.MATE || {};
   const STORAGE_KEY = 'mate.accountability.data';
-  const SCHEMA_VERSION = 1;
+  const SCHEMA_VERSION = 2;
   const CATEGORIES = ['Music', 'Business', 'Reading', 'Fitness', 'Meditation', 'Personal'];
+  const NEW_CATEGORY_VALUE = '__new_category__';
   const PRIORITIES = ['Low', 'Medium', 'High', 'Urgent'];
 
   function dateKey(value) {
@@ -14,6 +15,12 @@
       const [year, month, day] = value.split('-').map(Number); d = new Date(year, month - 1, day, 12, 0, 0, 0);
     } else d = new Date(value || Date.now());
     return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');
+  }
+  function habitDateKey(value) {
+    const dateOnly = typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+    const d = value instanceof Date ? new Date(value.getTime()) : dateOnly ? dayDate(value) : new Date(value || Date.now());
+    if (!dateOnly && d.getHours() < 4) d.setDate(d.getDate() - 1);
+    return dateKey(d);
   }
   function dayDate(key) {
     const [y, m, d] = String(key).split('-').map(Number);
@@ -35,15 +42,17 @@
       makeHabit('Meditation', 'Meditation'), makeHabit('Workout', 'Fitness'),
       makeHabit('Songwriting', 'Music')
     ];
-    const state = { schemaVersion: SCHEMA_VERSION, tasks: [], sessions: [], habits, habitDays: {}, activeTimer: null, lastGreeting: '', settings: { language: 'en' } };
-    state.habitDays[dateKey()] = { date: dateKey(), habits: habits.map(snapshotHabit), completedHabitIds: [] };
+    const state = { schemaVersion: SCHEMA_VERSION, tasks: [], sessions: [], habits, categories: CATEGORIES.slice(), habitDays: {}, activeTimer: null, lastGreeting: '', settings: { language: 'en' } };
+    const today = habitDateKey();
+    state.habitDays[today] = { date: today, habits: habits.map(snapshotHabit), completedHabitIds: [] };
     return state;
   }
   function snapshotHabit(habit) { return { id: habit.id, name: habit.name, category: habit.category }; }
-  function normalizeHabit(habit) {
+  function normalizeHabit(habit, categories = CATEGORIES) {
     if (!habit || typeof habit !== 'object' || typeof habit.id !== 'string') return null;
     const now = new Date().toISOString();
-    return { ...habit, name: typeof habit.name === 'string' ? habit.name : 'Untitled habit', category: CATEGORIES.includes(habit.category) ? habit.category : 'Personal', createdAt: habit.createdAt || now, deletedAt: habit.deletedAt || null };
+    const fallbackCategory = categories.includes('Personal') ? 'Personal' : categories[0];
+    return { ...habit, name: typeof habit.name === 'string' ? habit.name : 'Untitled habit', category: categories.includes(habit.category) ? habit.category : fallbackCategory, createdAt: habit.createdAt || now, deletedAt: habit.deletedAt || null };
   }
   function migrateState(parsed) {
     const source = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? { ...parsed } : {};
@@ -58,16 +67,24 @@
     // v0 was the unversioned prototype shape. Its task/session/habit arrays are preserved;
     // normalizeState below supplies missing fields and converts legacy status/snapshot values.
     if (version < 1) migrated = { ...migrated, schemaVersion: 1 };
+    if (version < 2) migrated = { ...migrated, schemaVersion: 2, categories: Array.isArray(migrated.categories) ? migrated.categories : CATEGORIES.slice() };
     return normalizeState(migrated);
   }
   function normalizeState(parsed) {
     // Keep unknown fields intact so a future migration never drops unrelated user data.
     const state = { ...parsed };
     state.schemaVersion = Math.max(SCHEMA_VERSION, Number(parsed.schemaVersion) || 0);
+    const storedCategories = Array.isArray(parsed.categories) ? parsed.categories : CATEGORIES;
+    state.categories = [];
+    for (const rawCategory of storedCategories) {
+      const category = String(rawCategory || '').trim().slice(0, 40);
+      if (category && !state.categories.some(existing => existing.toLocaleLowerCase() === category.toLocaleLowerCase())) state.categories.push(category);
+    }
+    if (!state.categories.length) state.categories = CATEGORIES.slice();
     state.tasks = Array.isArray(parsed.tasks) ? parsed.tasks.filter(t => t && typeof t.id === 'string').map(t => ({
       ...t,
       name: typeof t.name === 'string' ? t.name : 'Untitled task',
-      category: CATEGORIES.includes(t.category) ? t.category : 'Personal',
+      category: typeof t.category === 'string' && t.category.trim() ? t.category : (state.categories.includes('Personal') ? 'Personal' : state.categories[0]),
       priority: PRIORITIES.includes(t.priority) ? t.priority : 'Medium',
       status: t.status === 'done' || t.status === 'completed' ? 'done' : 'open',
       createdAt: t.createdAt || new Date().toISOString(),
@@ -77,14 +94,14 @@
       ...s, duration: Number.isFinite(s.duration) ? Math.max(0, s.duration) : 0,
       date: s.date || dateKey(s.startedAt || s.endedAt)
     })) : [];
-    state.habits = Array.isArray(parsed.habits) ? parsed.habits.map(normalizeHabit).filter(Boolean) : [];
+    state.habits = Array.isArray(parsed.habits) ? parsed.habits.map(habit => normalizeHabit(habit, state.categories)).filter(Boolean) : [];
     state.habitDays = parsed.habitDays && typeof parsed.habitDays === 'object' && !Array.isArray(parsed.habitDays) ? parsed.habitDays : {};
     for (const [key, oldDay] of Object.entries(state.habitDays)) {
       if (!oldDay || typeof oldDay !== 'object') { delete state.habitDays[key]; continue; }
       const oldHabits = Array.isArray(oldDay.habits) ? oldDay.habits : Array.isArray(oldDay.habitIds) ? oldDay.habitIds : [];
       state.habitDays[key] = {
         date: oldDay.date || key,
-        habits: oldHabits.map(item => typeof item === 'string' ? state.habits.find(h => h.id === item) : item).filter(Boolean).map(h => ({ id: h.id, name: String(h.name || 'Habit'), category: CATEGORIES.includes(h.category) ? h.category : 'Personal' })),
+        habits: oldHabits.map(item => typeof item === 'string' ? state.habits.find(h => h.id === item) : item).filter(Boolean).map(h => ({ id: h.id, name: String(h.name || 'Habit'), category: String(h.category || (state.categories.includes('Personal') ? 'Personal' : state.categories[0])) })),
         completedHabitIds: Array.isArray(oldDay.completedHabitIds) ? oldDay.completedHabitIds.filter(id => typeof id === 'string') : []
       };
     }
@@ -97,6 +114,7 @@
   }
 
   let state;
+  let lastWelcomeQuote = '';
   let persistence = 'local';
   let persistenceMessage = '';
   let readOnlyNewerSchema = false;
@@ -131,24 +149,113 @@
     }
   }
   function activeHabitsForDate(key) {
-    return state.habits.filter(h => dateKey(h.createdAt) <= key && (!h.deletedAt || dateKey(h.deletedAt) > key)).map(snapshotHabit);
+    return state.habits.filter(h => habitDateKey(h.createdAt) <= key && (!h.deletedAt || habitDateKey(h.deletedAt) > key)).map(snapshotHabit);
   }
-  function ensureDay(key) {
-    const current = state.habitDays[key];
-    if (!current) state.habitDays[key] = { date: key, habits: activeHabitsForDate(key), completedHabitIds: [] };
-    else if (key === dateKey()) {
-      const currentIds = new Set(current.habits.map(h => h.id));
-      const active = activeHabitsForDate(key);
-      current.habits = current.habits.filter(h => active.some(a => a.id === h.id)).map(h => active.find(a => a.id === h.id) || h);
-      for (const habit of active) if (!currentIds.has(habit.id)) current.habits.push(habit);
+  function ensureDay(key = habitDateKey()) {
+    if (!state.habitDays[key]) {
+      const habits = key === habitDateKey() ? [] : activeHabitsForDate(key);
+      state.habitDays[key] = { date: key, habits, completedHabitIds: [] };
     }
     return state.habitDays[key];
   }
   function getDay(key) {
-    // Analytics reads must not manufacture stored snapshots for dates that have not happened.
-    return state.habitDays[key] || { date: key, habits: activeHabitsForDate(key), completedHabitIds: [] };
+    // A pending current-day choice stays empty until the user copies or declines.
+    return state.habitDays[key] || { date: key, habits: key === habitDateKey() ? [] : activeHabitsForDate(key), completedHabitIds: [] };
+  }
+  function prepareHabitDay(key = habitDateKey()) {
+    if (state.habitDays[key]) return null;
+    const previousDate = Object.keys(state.habitDays).filter(date => date < key).sort().pop();
+    const previous = previousDate && state.habitDays[previousDate];
+    if (previous && previous.habits.length) return { previousDate, habitCount: previous.habits.length };
+    state.habitDays[key] = { date: key, habits: [], completedHabitIds: [] };
+    save();
+    return null;
+  }
+  function copyHabitDay(sourceKey, targetKey = habitDateKey()) {
+    if (state.habitDays[targetKey]) return false;
+    const source = state.habitDays[sourceKey];
+    if (!source || !source.habits.length) return false;
+    const habits = source.habits.map(snapshot => {
+      const existing = state.habits.find(h => h.id === snapshot.id && !h.deletedAt);
+      if (existing) return snapshotHabit(existing);
+      const restored = makeHabit(snapshot.name, snapshot.category);
+      state.habits.push(restored);
+      return snapshotHabit(restored);
+    });
+    state.habitDays[targetKey] = { date: targetKey, habits, completedHabitIds: [] };
+    save();
+    return true;
+  }
+  function declineHabitDay(key = habitDateKey()) {
+    if (state.habitDays[key]) return false;
+    state.habitDays[key] = { date: key, habits: [], completedHabitIds: [] };
+    save();
+    return true;
   }
   function getState() { return state; }
+  function getCategories() { return state.categories.slice(); }
+  function cleanCategoryName(value) {
+    const clean = String(value || '').trim();
+    if (!clean) throw new Error('Give the category a name.');
+    if (clean.length > 40) throw new Error('Category names can be up to 40 characters.');
+    if (clean === NEW_CATEGORY_VALUE) throw new Error('Choose a different category name.');
+    return clean;
+  }
+  function resolveCategory(category, newCategoryName) {
+    if (category !== NEW_CATEGORY_VALUE) {
+      if (!state.categories.includes(category)) throw new Error('Choose a category for this item.');
+      return { value: category, isNew: false };
+    }
+    const clean = cleanCategoryName(newCategoryName);
+    const existing = state.categories.find(item => item.toLocaleLowerCase() === clean.toLocaleLowerCase());
+    return { value: existing || clean, isNew: !existing };
+  }
+  function saveCategoryChoice(choice) {
+    if (choice.isNew) state.categories.push(choice.value);
+    return choice.value;
+  }
+  function addCategory(name) {
+    const clean = cleanCategoryName(name);
+    if (state.categories.some(item => item.toLocaleLowerCase() === clean.toLocaleLowerCase())) throw new Error('That category already exists.');
+    state.categories.push(clean);
+    save();
+    return clean;
+  }
+  function editCategory(oldName, newName) {
+    const index = state.categories.indexOf(oldName);
+    if (index < 0) throw new Error('That category is no longer in the list.');
+    const clean = cleanCategoryName(newName);
+    if (state.categories.some(item => item !== oldName && item.toLocaleLowerCase() === clean.toLocaleLowerCase())) throw new Error('That category already exists.');
+    if (clean === oldName) return oldName;
+    state.categories[index] = clean;
+    const now = new Date().toISOString();
+    for (const habit of state.habits) if (habit.category === oldName) { habit.category = clean; habit.updatedAt = now; }
+    for (const task of state.tasks) if (task.category === oldName && task.status === 'open') task.category = clean;
+    const today = state.habitDays[habitDateKey()];
+    if (today) {
+      const completed = new Set(today.completedHabitIds);
+      today.habits = today.habits.map(habit => habit.category === oldName && !completed.has(habit.id) ? { ...habit, category: clean } : habit);
+    }
+    save();
+    return clean;
+  }
+  function deleteCategory(name) {
+    const index = state.categories.indexOf(name);
+    if (index < 0) throw new Error('That category is no longer in the list.');
+    if (state.categories.length <= 1) throw new Error('Keep at least one category on the list.');
+    const fallback = state.categories.find(category => category !== name);
+    state.categories.splice(index, 1);
+    const now = new Date().toISOString();
+    for (const habit of state.habits) if (habit.category === name) { habit.category = fallback; habit.updatedAt = now; }
+    for (const task of state.tasks) if (task.category === name && task.status === 'open') task.category = fallback;
+    const today = state.habitDays[habitDateKey()];
+    if (today) {
+      const completed = new Set(today.completedHabitIds);
+      today.habits = today.habits.map(habit => habit.category === name && !completed.has(habit.id) ? { ...habit, category: fallback } : habit);
+    }
+    save();
+    return fallback;
+  }
   function currentPersistence() { return { mode: persistence, message: persistenceMessage }; }
   function persist() { save(); }
 
@@ -157,7 +264,7 @@
     if (!name) throw new Error('Give the task a name first. MATE cannot check off a blank space.');
     const now = new Date().toISOString();
     const task = {
-      id: uid(), name, category: CATEGORIES.includes(input.category) ? input.category : 'Personal',
+      id: uid(), name, category: state.categories.includes(input.category) ? input.category : (state.categories.includes('Personal') ? 'Personal' : state.categories[0]),
       priority: PRIORITIES.includes(input.priority) ? input.priority : 'Medium',
       dueDate: input.dueDate || '', project: String(input.project || '').trim(), notes: String(input.notes || '').trim(),
       status: 'open', createdAt: now, completedAt: null, totalFocusTime: 0
@@ -206,37 +313,49 @@
     return { task, duration, nextTaskId };
   }
   function toggleHabit(habitId, key) {
-    const day = ensureDay(key || dateKey());
+    const day = ensureDay(key || habitDateKey());
     if (!day.habits.some(h => h.id === habitId)) return false;
     const checked = new Set(day.completedHabitIds);
     if (checked.has(habitId)) checked.delete(habitId); else checked.add(habitId);
     day.completedHabitIds = Array.from(checked); save(); return true;
   }
-  function addHabit(name, category) {
+  function addHabit(name, category, newCategoryName) {
     const cleanName = String(name || '').trim();
     if (!cleanName) throw new Error('A habit needs a name.');
-    if (!CATEGORIES.includes(category)) throw new Error('Choose a category for this habit.');
-    if (state.habits.some(h => !h.deletedAt && h.name.toLocaleLowerCase() === cleanName.toLocaleLowerCase())) throw new Error('That habit is already on the list.');
-    const habit = makeHabit(cleanName, category); state.habits.push(habit);
-    const day = ensureDay(dateKey());
-    if (!day.habits.some(item => item.id === habit.id)) day.habits.push(snapshotHabit(habit));
-    save(); return habit;
+    const day = ensureDay(habitDateKey());
+    const existing = state.habits.find(h => !h.deletedAt && h.name.toLocaleLowerCase() === cleanName.toLocaleLowerCase());
+    if (existing && day.habits.some(item => item.id === existing.id)) throw new Error("That habit is already on today's list.");
+    const categoryChoice = resolveCategory(category, newCategoryName);
+    const finalCategory = saveCategoryChoice(categoryChoice);
+    if (existing) {
+      existing.category = finalCategory;
+      existing.updatedAt = new Date().toISOString();
+      day.habits.push(snapshotHabit(existing));
+      save();
+      return existing;
+    }
+    const habit = makeHabit(cleanName, finalCategory);
+    state.habits.push(habit);
+    day.habits.push(snapshotHabit(habit));
+    save();
+    return habit;
   }
-  function editHabit(habitId, name, category) {
+  function editHabit(habitId, name, category, newCategoryName) {
     const habit = state.habits.find(h => h.id === habitId && !h.deletedAt);
     const cleanName = String(name || '').trim();
     if (!habit) throw new Error('That habit is no longer active.');
     if (!cleanName) throw new Error('A habit needs a name.');
-    if (!CATEGORIES.includes(category)) throw new Error('Choose a category for this habit.');
     if (state.habits.some(h => h.id !== habitId && !h.deletedAt && h.name.toLocaleLowerCase() === cleanName.toLocaleLowerCase())) throw new Error('That habit is already on the list.');
-    habit.name = cleanName; habit.category = category; habit.updatedAt = new Date().toISOString();
-    const day = ensureDay(dateKey());
+    const categoryChoice = resolveCategory(category, newCategoryName);
+    const finalCategory = saveCategoryChoice(categoryChoice);
+    habit.name = cleanName; habit.category = finalCategory; habit.updatedAt = new Date().toISOString();
+    const day = ensureDay(habitDateKey());
     day.habits = day.habits.map(h => h.id === habitId ? snapshotHabit(habit) : h); save(); return habit;
   }
   function deleteHabit(habitId) {
     const habit = state.habits.find(h => h.id === habitId && !h.deletedAt); if (!habit) return false;
     habit.deletedAt = new Date().toISOString();
-    const day = ensureDay(dateKey()); day.habits = day.habits.filter(h => h.id !== habitId);
+    const day = ensureDay(habitDateKey()); day.habits = day.habits.filter(h => h.id !== habitId);
     // Keep completedHabitIds and every earlier daily snapshot as historical records.
     save(); return true;
   }
@@ -253,7 +372,30 @@
     state.lastGreeting = pick; save(); return pick;
   }
 
-  // Create today's schedule once on startup; snapshots for other dates are never rewritten.
-  ensureDay(dateKey()); save();
-  MATE.data = { STORAGE_KEY, SCHEMA_VERSION, CATEGORIES, PRIORITIES, dateKey, dayDate, uid, clone, getState, getDay, currentPersistence, persist, addTask, findTask, completeTask, reopenTask, setActiveTimer, stopTimer, queueNextTimer, resolveTimer, toggleHabit, addHabit, editHabit, deleteHabit, greeting };
+  const welcomeQuotes = [
+    'Your to-do list has been very patient. Suspiciously patient.',
+    'Waiting for motivation is a bold way to give the task more time.',
+    'You do not need a life overhaul. Start with the one thing you keep avoiding.',
+    'Future-you asked me to say: please stop making this weird.',
+    'A perfect plan is procrastination in a nicer jacket.',
+    'Do one small thing now. You can dramatically sigh after.',
+    'The task is still there. It has excellent job security.',
+    'You have thought about it enough to qualify as an unpaid consultant. Start.',
+    'It will take less time than negotiating with yourself.',
+    'Pick a task. Any task. The pile is getting ideas.',
+    'No gold star. Just the smug little relief of having done it.',
+    'If it matters, try doing it before your brain opens another tab.',
+    'The couch has no measurable career plan for you.',
+    'You are allowed to do it badly the first time. Annoying, but true.'
+  ];
+  function welcomeQuote() {
+    const choices = welcomeQuotes.filter(quote => quote !== lastWelcomeQuote);
+    const pick = choices[Math.floor(Math.random() * choices.length)] || welcomeQuotes[0];
+    lastWelcomeQuote = pick;
+    return pick;
+  }
+
+  // Normalize migrated storage, but leave a new Habit day uncreated until its copy choice is offered.
+  save();
+  MATE.data = { STORAGE_KEY, SCHEMA_VERSION, CATEGORIES, NEW_CATEGORY_VALUE, PRIORITIES, dateKey, habitDateKey, dayDate, uid, clone, getState, getCategories, addCategory, editCategory, deleteCategory, getDay, prepareHabitDay, copyHabitDay, declineHabitDay, currentPersistence, persist, addTask, findTask, completeTask, reopenTask, setActiveTimer, stopTimer, queueNextTimer, resolveTimer, toggleHabit, addHabit, editHabit, deleteHabit, greeting, welcomeQuote };
 })(window);

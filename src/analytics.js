@@ -1,12 +1,12 @@
 (function (root) {
   'use strict';
   const MATE = root.MATE = root.MATE || {};
-  const { dateKey, dayDate, getState, getDay } = MATE.data;
+  const { dateKey, habitDateKey, dayDate, getState, getDay } = MATE.data;
 
   function startOfWeek(date) { const d = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d; }
   function shiftDay(date, amount) { const d = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12); d.setDate(d.getDate() + amount); return d; }
-  function periodRange(period, customStart, customEnd) {
-    const today = new Date(); const endToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12);
+  function periodRange(period, customStart, customEnd, referenceDate = new Date()) {
+    const today = referenceDate; const endToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12);
     let start;
     if (period === 'daily') start = endToday;
     else if (period === 'weekly') start = startOfWeek(endToday);
@@ -19,6 +19,14 @@
     if (period === 'monthly') end = new Date(today.getFullYear(), today.getMonth() + 1, 0, 12);
     if (period === 'yearly') end = new Date(today.getFullYear(), 11, 31, 12);
     return { start: dateKey(start), end: dateKey(end < start ? start : end) };
+  }
+  function previousPeriodDate(period) {
+    const reference = new Date();
+    if (period === 'daily') reference.setDate(reference.getDate() - 1);
+    else if (period === 'weekly') reference.setDate(reference.getDate() - 7);
+    else if (period === 'monthly') { reference.setDate(1); reference.setMonth(reference.getMonth() - 1); }
+    else if (period === 'yearly') reference.setFullYear(reference.getFullYear() - 1);
+    return reference;
   }
   function inRange(key, range) { return key >= range.start && key <= range.end; }
   function durationOnDate(session, key) {
@@ -51,12 +59,12 @@
     const completed = day.completedHabitIds.filter(id => ids.has(id)).length;
     return { date: key, completed, total: ids.size, percent: ids.size ? Math.round(completed / ids.size * 100) : null };
   }
-  function weekHabits(anchor = new Date()) {
+  function weekHabits(anchor = dayDate(habitDateKey())) {
     const monday = startOfWeek(anchor);
     return Array.from({ length: 7 }, (_, i) => habitStats(dateKey(shiftDay(monday, i))));
   }
-  function summarize(period, customStart, customEnd) {
-    const range = periodRange(period, customStart, customEnd);
+  function summarize(period, customStart, customEnd, referenceDate = new Date()) {
+    const range = periodRange(period, customStart, customEnd, referenceDate);
     const state = getState();
     const sessions = state.sessions.filter(s => sessionInRange(s, range));
     const assignedTasks = state.tasks.filter(t => inRange(taskDate(t), range));
@@ -101,11 +109,11 @@
     const completed = completedToday.length;
     const open = dueToday.filter(t => t.status === 'open').length;
     const progressDone = todays.filter(t => t.status === 'done').length;
-    const habit = habitStats(today);
+    const habit = habitStats(habitDateKey());
     const focusMs = state.sessions.reduce((sum,s) => sum + durationOnDate(s,today), 0);
     const active = state.activeTimer;
     const activeMs = active ? durationOnDate({ startedAt: active.startedAt, endedAt: active.stoppedAt || new Date().toISOString(), date: dateKey(active.startedAt) },today) : 0;
     return { completed, progressDone, open, percent: todays.length ? Math.min(100,Math.round(progressDone/todays.length*100)) : null, focusMs: focusMs + activeMs, habit, tasks: todays, overdue: state.tasks.filter(t => t.status === 'open' && t.dueDate && t.dueDate < today) };
   }
-  MATE.analytics = { startOfWeek, shiftDay, periodRange, habitStats, weekHabits, summarize, dashboard, durationOnDate, durationInRange };
+  MATE.analytics = { startOfWeek, shiftDay, periodRange, previousPeriodDate, habitStats, weekHabits, summarize, dashboard, durationOnDate, durationInRange };
 })(window);

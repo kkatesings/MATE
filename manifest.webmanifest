@@ -1,0 +1,28 @@
+{
+  "id": "./",
+  "name": "MATE — Personal Accountability System",
+  "short_name": "MATE",
+  "description": "Personal accountability for tasks, habits, and focus time.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "theme_color": "#07151c",
+  "background_color": "#07151c",
+  "prefer_related_applications": false,
+  "categories": ["productivity", "lifestyle"],
+  "icons": [
+    {
+      "src": "./icons/mate-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/mate-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

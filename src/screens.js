@@ -246,6 +246,10 @@
     return `${items.slice(0,2).map(([page,icon,label])=>`<button type="button" class="nav-item ${active===page?'active':''}" data-nav="${page}" aria-current="${active===page?'page':'false'}"><span class="nav-icon" aria-hidden="true">${icon}</span><span class="nav-label">${esc(MATE.i18n.t(page))}</span></button>`).join('')}<button type="button" class="nav-add" data-action="add-task" aria-label="${esc(MATE.i18n.t('addTask'))}"><span aria-hidden="true">+</span></button>${items.slice(2).map(([page,icon,label])=>`<button type="button" class="nav-item ${active===page?'active':''}" data-nav="${page}" aria-current="${active===page?'page':'false'}"><span class="nav-icon" aria-hidden="true">${icon}</span><span class="nav-label">${esc(MATE.i18n.t(page))}</span></button>`).join('')}`;
   }
 
+  function cloudGreeting(user) {
+    const name = String(user && user.displayName || '').trim().split(/\s+/)[0];
+    return name ? 'Welcome, ' + name : 'Welcome';
+  }
   function updateCloudAccount() {
     const gear = root.document.querySelector('.topbar .tone-settings-link');
     if (!gear || !gear.parentNode) return;
@@ -270,7 +274,7 @@
       return;
     }
     if (!cloud.cloudConsentGranted) {
-      const accountName = cloud.user ? '<span class="cloud-account-name">' + esc(cloud.user.displayName || cloud.user.email || 'Google account') + '</span>' : '';
+      const accountName = cloud.user ? '<span class="cloud-account-name">' + esc(cloudGreeting(cloud.user)) + '</span>' : '';
       const withdraw = cloud.user ? '<button class="button small-button auth-button danger-button" type="button" data-action="withdraw-cloud-consent">Withdraw consent</button>' : '';
       const signOut = cloud.user ? '<button class="button small-button auth-button" type="button" data-action="cloud-sign-out">Sign out</button>' : '';
       const deleteAccount = cloud.user ? '<button class="button small-button auth-button danger-button" type="button" data-action="delete-cloud-account">Delete account</button>' : '';
@@ -284,7 +288,7 @@
     }
     const labels = { syncing: 'Syncing', synced: 'Synced', offline: 'Offline · saved here', error: 'Sync needs attention', privacy: 'Review privacy notice', local: 'Local only', setup: 'Setup needed', checking: 'Checking' };
     const label = labels[cloud.status] || 'Account connected';
-    holder.innerHTML = privacyLink + '<span class="cloud-account-name" title="' + esc(cloud.user.email || cloud.user.displayName) + '">' + esc(cloud.user.displayName || cloud.user.email || 'Google account') + '</span><span class="cloud-status ' + esc(cloud.status) + '" role="status">' + esc(label) + '</span><button class="button small-button auth-button" type="button" data-action="cloud-export-data">Export data</button><button class="button small-button auth-button danger-button" type="button" data-action="delete-cloud-account">Delete account</button><button class="button small-button auth-button" type="button" data-action="cloud-sign-out">Sign out</button>';
+    holder.innerHTML = privacyLink + '<span class="cloud-account-name" title="' + esc(cloud.user.email || cloud.user.displayName) + '">' + esc(cloudGreeting(cloud.user)) + '</span><span class="cloud-status ' + esc(cloud.status) + '" role="status">' + esc(label) + '</span><button class="button small-button auth-button" type="button" data-action="cloud-export-data">Export data</button><button class="button small-button auth-button danger-button" type="button" data-action="delete-cloud-account">Delete account</button><button class="button small-button auth-button" type="button" data-action="cloud-sign-out">Sign out</button>';
   }
   function privacyAcknowledgement() {
     const cloud = MATE.cloudSync ? MATE.cloudSync.state() : { privacyReady: false, privacyHref: './privacy.html' };

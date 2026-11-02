@@ -27,6 +27,13 @@
   let status = configReady() ? 'checking' : 'setup';
   let statusMessage = '';
   let initialSignInError = '';
+  let lastStage = 'not started';
+  let lastStageAt = '';
+  let lastError = null;
+  let lastSnapshotAt = '';
+  let diagnosticChecks = [];
+  let authPersistence = 'not checked';
+  let authPersistenceError = null;
 
   function configReady() {
     return ['apiKey', 'authDomain', 'projectId', 'appId'].every(key => {
@@ -57,10 +64,53 @@
       error: initialSignInError,
       privacyReady: privacyReady(),
       cloudConsentGranted: !!readCloudConsent(),
-      privacyHref: privacyInfo().href || './privacy.html'
+      privacyHref: privacyInfo().href || './privacy.html',
+      diagnostics: {
+        origin: root.location ? root.location.origin : 'unavailable',
+        hostname: root.location ? root.location.hostname : 'unavailable',
+        secureContext: !!(root.location && root.location.protocol === 'https:'),
+        projectId: config.projectId || '',
+        authDomain: config.authDomain || '',
+        sdkVersion: root.firebase && root.firebase.SDK_VERSION || '',
+        authInitialized: !!auth,
+        authPersistence,
+        authPersistenceError: authPersistenceError ? { ...authPersistenceError } : null,
+        firestoreInitialized: !!db,
+        firebaseUser: !!(currentUser || (auth && auth.currentUser)),
+        syncInitialized: initialized,
+        queuedChanges: !!pendingState,
+        waitingForSnapshots: Array.from(waitingFor),
+        checks: diagnosticChecks.slice(),
+        lastStage,
+        lastStageAt,
+        lastSnapshotAt,
+        lastError: lastError ? { ...lastError } : null
+      }
     };
   }
   function emit(detail) { callbacks.forEach(callback => { try { callback(detail || {}); } catch (_) {} }); }
+  function setStage(stage) {
+    lastStage = stage;
+    lastStageAt = new Date().toISOString();
+  }
+  function safeError(error) {
+    const apiKey = String(config.apiKey || '');
+    const rawMessage = String(error && error.message || error || 'Unknown error');
+    let message = rawMessage.replace(/AIza[0-9A-Za-z_-]{20,}/g, '[redacted API key]');
+    if (apiKey) message = message.split(apiKey).join('[redacted API key]');
+    if (currentUser && currentUser.uid) message = message.split(currentUser.uid).join('[redacted account ID]');
+    return {
+      code: String(error && error.code || ''),
+      message: message.slice(0, 500)
+    };
+  }
+  function recordError(error, stage, nextStatus = 'error') {
+    const safe = safeError(error);
+    lastError = { ...safe, stage, at: new Date().toISOString() };
+    setStage(stage + ' failed');
+    initialSignInError = safe.message;
+    setStatus(nextStatus, safe.message);
+  }
   function setStatus(next, message) {
     status = next;
     statusMessage = message || '';
@@ -213,6 +263,7 @@
   function storageRemove(key) { try { root.localStorage.removeItem(key); } catch (_) {} }
   async function bootstrap(uid) {
     if (!readCloudConsent() || !currentUser || currentUser.uid !== uid) return;
+    setStage('Preparing account data');
     setStatus('syncing', 'Preparing this account on this device.');
     let local = pendingState || clone(data.getState());
     pendingState = null;
@@ -235,11 +286,14 @@
     initialized = true;
     syncing = true;
     try {
+      setStage('Writing initial data to Firestore');
       await writeState(local);
+      lastError = null;
+      setStage('Initial Firestore sync completed');
       setStatus('synced', 'Changes are saved to this Google account.');
     } catch (error) {
       pendingState = local;
-      setStatus('offline', 'Saved on this device. Cloud sync will retry when online.');
+      recordError(error, 'Initial Firestore write');
     } finally {
       syncing = false;
       remotePending = false;
@@ -259,6 +313,8 @@
   }
   function receive(group, snapshot) {
     if (!readCloudConsent()) return;
+    lastSnapshotAt = new Date().toISOString();
+    setStage('Received Firestore ' + group + ' snapshot');
     if (group === 'profile') cache.profile = snapshot.exists ? snapshot.data() : null;
     else {
       const next = {};
@@ -267,7 +323,7 @@
     }
     if (!initialized) {
       waitingFor.delete(group);
-      if (!waitingFor.size) bootstrap(currentUser.uid).catch(error => setStatus('error', error.message || 'Could not prepare cloud sync.'));
+      if (!waitingFor.size) bootstrap(currentUser.uid).catch(error => recordError(error, 'Preparing cloud sync'));
       return;
     }
     if (syncing) { remotePending = true; return; }
@@ -292,10 +348,11 @@
     if (!privacyReady() || !readCloudConsent()) { setStatus('privacy', 'Give consent before cloud sync.'); return; }
     refs = makeRefs(user.uid);
     waitingFor = new Set(groups);
+    setStage('Listening for Firestore data');
     setStatus('syncing', 'Loading your saved data.');
-    stops.push(refs.profile.onSnapshot(snapshot => receive('profile', snapshot), error => setStatus('offline', error.message || 'Cloud sync is unavailable.')));
+    stops.push(refs.profile.onSnapshot(snapshot => receive('profile', snapshot), error => recordError(error, 'Firestore profile read')));
     ['tasks', 'sessions', 'habits', 'habitDays'].forEach(group => {
-      stops.push(refs[group].onSnapshot(snapshot => receive(group, snapshot), error => setStatus('offline', error.message || 'Cloud sync is unavailable.')));
+      stops.push(refs[group].onSnapshot(snapshot => receive(group, snapshot), error => recordError(error, 'Firestore ' + group + ' read')));
     });
   }
   async function flushQueue() {
@@ -305,14 +362,18 @@
       while (pendingState) {
         const next = pendingState;
         pendingState = null;
-        try { await writeState(next); }
+        try {
+          setStage('Writing local changes to Firestore');
+          await writeState(next);
+          lastError = null;
+        }
         catch (error) {
           pendingState = next;
-          setStatus('offline', 'Saved on this device. Cloud sync will retry when online.');
+          recordError(error, 'Firestore write');
           break;
         }
       }
-      if (!pendingState) setStatus('synced', 'Changes are saved to this Google account.');
+      if (!pendingState) { setStage('Cloud data is synced'); setStatus('synced', 'Changes are saved to this Google account.'); }
     } finally {
       syncing = false;
       if (remotePending) { remotePending = false; applyRemoteCache(); }
@@ -366,10 +427,16 @@
     return initialize().then(() => {
       if (!auth) throw new Error('Firebase sign-in is not available yet.');
       initialSignInError = '';
+      lastError = null;
+      setStage('Starting Google sign-in redirect');
+      setStatus('checking', 'Opening Google sign-in.');
       const provider = new root.firebase.auth.GoogleAuthProvider();
       // The SDK is loaded on demand, so a popup after the network request may
       // be blocked by browsers. Redirect sign-in works consistently on web and PWA.
-      return auth.signInWithRedirect(provider);
+      return auth.signInWithRedirect(provider).catch(error => {
+        recordError(error, 'Starting Google sign-in');
+        throw error;
+      });
     });
   }
   function grantCloudConsent() {
@@ -542,13 +609,22 @@
     if (initializationPromise) return initializationPromise;
     setStatus('checking', 'Preparing cloud account controls.');
     initializationPromise = loadFirebaseSdk().then(async () => {
+      setStage('Firebase SDK loaded');
       const app = root.firebase.apps.length ? root.firebase.app() : root.firebase.initializeApp(config);
       auth = app.auth();
       db = app.firestore();
-      await auth.setPersistence(root.firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
+      try {
+        await auth.setPersistence(root.firebase.auth.Auth.Persistence.LOCAL);
+        authPersistence = 'LOCAL';
+        authPersistenceError = null;
+      } catch (error) {
+        authPersistence = 'failed';
+        authPersistenceError = safeError(error);
+      }
       await new Promise((resolve, reject) => {
         let firstState = true;
         authStateUnsubscribe = auth.onAuthStateChanged(user => {
+          setStage(user ? 'Firebase Authentication found a signed-in user' : 'Firebase Authentication reports signed out');
           if (user) {
             stopSync();
             currentUser = user;
@@ -566,31 +642,97 @@
           }
           if (firstState) { firstState = false; resolve(); }
         }, error => {
-          setStatus('error', error.message || 'Could not check your Google account.');
+          recordError(error, 'Firebase auth state check');
           if (firstState) { firstState = false; reject(error); }
         });
       });
       const pendingDeletion = storageGet(pendingCloudDeletionKey) === 'true';
       try {
+        setStage('Checking Google sign-in redirect result');
         const redirectResult = await auth.getRedirectResult();
+        if (redirectResult && redirectResult.user) {
+          setStage('Google sign-in redirect returned a user');
+          lastError = null;
+        } else {
+          setStage('No pending Google sign-in redirect result');
+        }
         if (pendingDeletion && redirectResult && redirectResult.user) await finishPendingCloudDeletion(redirectResult.user);
         else if (pendingDeletion) storageRemove(pendingCloudDeletionKey);
       } catch (error) {
         if (pendingDeletion) storageRemove(pendingCloudDeletionKey);
-        initialSignInError = error.message || 'Could not complete Google sign-in.';
-        setStatus('error', initialSignInError);
+        recordError(error, 'Google sign-in redirect result');
       }
     }).catch(error => {
-      setStatus('error', error.message || 'Could not initialize Firebase.');
+      recordError(error, 'Firebase initialization');
       if (!authStateUnsubscribe) { auth = null; db = null; }
       throw error;
     }).finally(() => { initializationPromise = null; });
     return initializationPromise;
   }
+  async function runDiagnostics() {
+    diagnosticChecks = [];
+    const add = (label, ok, detail) => diagnosticChecks.push({ label, ok: !!ok, detail: detail || '' });
+    setStage('Running sync diagnostics');
+    add('Firebase web config is present', configReady(), config.projectId ? 'Project: ' + config.projectId : 'Firebase config is incomplete.');
+    add('This page uses HTTPS', !!(root.location && root.location.protocol === 'https:'), root.location ? root.location.origin : 'Page location unavailable.');
+    add('Cloud privacy notice is enabled', privacyReady(), privacyReady() ? 'Notice version ' + privacyInfo().version : 'The privacy configuration is not ready.');
+    add('Cloud-sync consent is saved in this browser', !!readCloudConsent(), readCloudConsent() ? 'Consent is present for this browser profile.' : 'Consent is not present in this browser profile.');
+    try { await initialize(); }
+    catch (_) {}
+    add('Firebase SDK initialized', !!(root.firebase && auth && db), root.firebase && root.firebase.SDK_VERSION ? 'Firebase SDK ' + root.firebase.SDK_VERSION : 'The Firebase SDK did not initialize.');
+    add('Sign-in persistence', authPersistence === 'LOCAL', authPersistence === 'failed' ? (authPersistenceError && authPersistenceError.code ? authPersistenceError.code + ': ' : '') + (authPersistenceError && authPersistenceError.message || 'Could not set persistent sign-in.') : authPersistence);
+    const user = currentUser || (auth && auth.currentUser);
+    add('MATE has a Firebase Authentication user', !!user, user ? 'Firebase has an authenticated user for this page.' : 'Google sign-in did not complete in this browser session.');
+    if (user && db && readCloudConsent()) {
+      try {
+        setStage('Checking read access to this user’s Firestore profile');
+        await makeRefs(user.uid).profile.get({ source: 'server' });
+        add('Firestore profile read is allowed', true, 'A server read succeeded. This diagnostic did not write or change any data.');
+        lastError = null;
+      } catch (error) {
+        add('Firestore profile read is allowed', false, safeError(error).code + ': ' + safeError(error).message);
+        recordError(error, 'Firestore diagnostic read');
+      }
+    } else {
+      add('Firestore profile read is allowed', false, user ? 'Cloud consent is missing.' : 'Complete Firebase Google sign-in first.');
+    }
+    add('Cloud sync has completed initial setup', initialized, initialized ? 'Firestore listeners are active.' : waitingFor.size ? 'Waiting for first Firestore snapshots: ' + Array.from(waitingFor).join(', ') : 'Initial sync has not completed.');
+    setStage('Sync diagnostics finished');
+    emit({ dataChanged: false });
+    return state();
+  }
+  function diagnosticReport() {
+    const cloud = state();
+    return JSON.stringify({
+      app: 'MATE',
+      checkedAt: new Date().toISOString(),
+      origin: cloud.diagnostics.origin,
+      hostname: cloud.diagnostics.hostname,
+      secureContext: cloud.diagnostics.secureContext,
+      firebaseProject: cloud.diagnostics.projectId,
+      firebaseAuthDomain: cloud.diagnostics.authDomain,
+      sdkVersion: cloud.diagnostics.sdkVersion || 'not loaded',
+      privacyReady: cloud.privacyReady,
+      cloudConsentGranted: cloud.cloudConsentGranted,
+      authInitialized: cloud.diagnostics.authInitialized,
+      authPersistence: cloud.diagnostics.authPersistence,
+      authPersistenceError: cloud.diagnostics.authPersistenceError,
+      firebaseUser: cloud.diagnostics.firebaseUser,
+      firestoreInitialized: cloud.diagnostics.firestoreInitialized,
+      syncInitialized: cloud.diagnostics.syncInitialized,
+      queuedChanges: cloud.diagnostics.queuedChanges,
+      waitingForSnapshots: cloud.diagnostics.waitingForSnapshots,
+      checks: cloud.diagnostics.checks,
+      lastStage: cloud.diagnostics.lastStage,
+      lastStageAt: cloud.diagnostics.lastStageAt,
+      lastSnapshotAt: cloud.diagnostics.lastSnapshotAt,
+      lastError: cloud.diagnostics.lastError
+    }, null, 2);
+  }
   root.addEventListener('online', () => {
     if (currentUser && initialized) { pendingState = clone(data.getState()); flushQueue(); }
   });
-  MATE.cloudSync = { state, subscribe, signInWithGoogle, grantCloudConsent, withdrawCloudConsent, exportData, deleteAccount, signOut, onLocalSave, initialize };
+  MATE.cloudSync = { state, subscribe, signInWithGoogle, grantCloudConsent, withdrawCloudConsent, exportData, deleteAccount, signOut, onLocalSave, initialize, runDiagnostics, diagnosticReport };
   // Firebase's SDK contacts Google's CDN. Load it only for a previously linked
   // account or after the user has accepted cloud-sync consent.
   if (storageGet(ownerKey) || (privacyReady() && readCloudConsent())) initialize().catch(() => {});

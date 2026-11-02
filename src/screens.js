@@ -262,15 +262,16 @@
     }
     const cloud = MATE.cloudSync ? MATE.cloudSync.state() : { configured: false, user: null, status: 'setup', privacyHref: './privacy.html', privacyReady: false, cloudConsentGranted: false };
     const privacyLink = '<a class="cloud-policy-link" href="' + esc(cloud.privacyHref || './privacy.html') + '" target="_blank" rel="noopener noreferrer">Privacy</a>';
+    const debugButton = '<button class="cloud-debug-link" type="button" data-action="cloud-diagnostics">Sync help</button>';
     if (!cloud.configured) {
-      holder.innerHTML = privacyLink + '<span class="cloud-status local" title="Cloud sync will be available after Firebase setup.">On this device</span>';
+      holder.innerHTML = privacyLink + debugButton + '<span class="cloud-status local" title="Cloud sync will be available after Firebase setup.">On this device</span>';
       return;
     }
     if (!cloud.privacyReady) {
       const signOut = cloud.user ? '<button class="button small-button auth-button" type="button" data-action="cloud-sign-out">Sign out</button>' : '';
       const withdraw = cloud.cloudConsentGranted ? '<button class="button small-button auth-button danger-button" type="button" data-action="withdraw-cloud-consent">Withdraw consent</button>' : '';
       const deleteAccount = cloud.user ? '<button class="button small-button auth-button danger-button" type="button" data-action="delete-cloud-account">Delete account</button>' : '';
-      holder.innerHTML = privacyLink + '<span class="cloud-status setup" role="status">Privacy setup needed</span>' + withdraw + deleteAccount + signOut;
+      holder.innerHTML = privacyLink + debugButton + '<span class="cloud-status setup" role="status">Privacy setup needed</span>' + withdraw + deleteAccount + signOut;
       return;
     }
     if (!cloud.cloudConsentGranted) {
@@ -278,17 +279,29 @@
       const withdraw = cloud.user ? '<button class="button small-button auth-button danger-button" type="button" data-action="withdraw-cloud-consent">Withdraw consent</button>' : '';
       const signOut = cloud.user ? '<button class="button small-button auth-button" type="button" data-action="cloud-sign-out">Sign out</button>' : '';
       const deleteAccount = cloud.user ? '<button class="button small-button auth-button danger-button" type="button" data-action="delete-cloud-account">Delete account</button>' : '';
-      holder.innerHTML = privacyLink + accountName + '<button class="button small-button auth-button" type="button" data-action="review-privacy">Review &amp; consent</button>' + withdraw + deleteAccount + signOut;
+      holder.innerHTML = privacyLink + debugButton + accountName + '<button class="button small-button auth-button" type="button" data-action="review-privacy">Review &amp; consent</button>' + withdraw + deleteAccount + signOut;
       return;
     }
     if (!cloud.user) {
       const withdraw = cloud.cloudConsentGranted ? '<button class="button small-button auth-button danger-button" type="button" data-action="withdraw-cloud-consent">Withdraw consent</button>' : '';
-      holder.innerHTML = privacyLink + '<button class="button small-button auth-button" type="button" data-action="cloud-sign-in">Sign in with Google</button>' + withdraw;
+      holder.innerHTML = privacyLink + debugButton + '<button class="button small-button auth-button" type="button" data-action="cloud-sign-in">Sign in with Google</button>' + withdraw;
       return;
     }
     const labels = { syncing: 'Syncing', synced: 'Synced', offline: 'Offline · saved here', error: 'Sync needs attention', privacy: 'Review privacy notice', local: 'Local only', setup: 'Setup needed', checking: 'Checking' };
     const label = labels[cloud.status] || 'Account connected';
-    holder.innerHTML = privacyLink + '<span class="cloud-account-name" title="' + esc(cloud.user.email || cloud.user.displayName) + '">' + esc(cloudGreeting(cloud.user)) + '</span><span class="cloud-status ' + esc(cloud.status) + '" role="status">' + esc(label) + '</span><button class="button small-button auth-button" type="button" data-action="cloud-export-data">Export data</button><button class="button small-button auth-button danger-button" type="button" data-action="delete-cloud-account">Delete account</button><button class="button small-button auth-button" type="button" data-action="cloud-sign-out">Sign out</button>';
+    holder.innerHTML = privacyLink + debugButton + '<span class="cloud-account-name" title="' + esc(cloud.user.email || cloud.user.displayName) + '">' + esc(cloudGreeting(cloud.user)) + '</span><span class="cloud-status ' + esc(cloud.status) + '" role="status">' + esc(label) + '</span><button class="button small-button auth-button" type="button" data-action="cloud-export-data">Export data</button><button class="button small-button auth-button danger-button" type="button" data-action="delete-cloud-account">Delete account</button><button class="button small-button auth-button" type="button" data-action="cloud-sign-out">Sign out</button>';
+  }
+  function cloudDiagnostics() {
+    const cloud = MATE.cloudSync ? MATE.cloudSync.state() : { diagnostics: {}, configured: false };
+    const details = cloud.diagnostics || {};
+    const checks = (details.checks || []).map(check => `<div class="diagnostic-row"><span class="diagnostic-mark ${check.ok ? 'ok' : 'fail'}">${check.ok ? '✓' : '!'}</span><div><strong>${esc(check.label)}</strong><p>${esc(check.detail)}</p></div></div>`).join('');
+    const error = details.lastError
+      ? `<div class="diagnostic-error"><strong>${esc(details.lastError.code || 'Error')} · ${esc(details.lastError.stage)}</strong><p>${esc(details.lastError.message)}</p><span>${esc(details.lastError.at)}</span></div>`
+      : '<p class="muted">No Firebase error has been recorded in this page session.</p>';
+    const report = MATE.cloudSync && MATE.cloudSync.diagnosticReport ? MATE.cloudSync.diagnosticReport() : '{}';
+    const body = `<p>This check reads your own Firestore profile only. It does not write or change any MATE data.</p><div class="diagnostic-summary"><div><span>Page</span><strong>${esc(details.origin || 'unknown')}</strong></div><div><span>Firebase project</span><strong>${esc(details.projectId || 'not configured')}</strong></div><div><span>Auth domain</span><strong>${esc(details.authDomain || 'not configured')}</strong></div><div><span>Last step</span><strong>${esc(details.lastStage || 'not started')}</strong></div><div><span>Firebase user</span><strong>${details.firebaseUser ? 'Signed in' : 'Not signed in'}</strong></div><div><span>Cloud sync</span><strong>${esc(cloud.status || 'unknown')}</strong></div></div><h3>Checks</h3>${checks || '<p class="muted">No checks run yet. Choose Run checks.</p>'}<h3>Latest error</h3>${error}<details class="diagnostic-help"><summary>Firebase Console checks</summary><ol><li>Authentication → Sign-in method: Google is enabled.</li><li>Authentication → Settings → Authorized domains includes <code>kkatesings.github.io</code>.</li><li>Google Cloud → APIs &amp; Services → Credentials: the browser key permits the GitHub Pages site and the Firebase auth domain as website referrers, and still allows the four Firebase APIs.</li><li>Firestore → Rules: the published rules allow a signed-in user to read and write only below <code>users/{uid}</code>.</li></ol></details><label class="diagnostic-report-label" for="sync-diagnostic-report">Shareable diagnostic report (contains no API key or account ID)</label><textarea id="sync-diagnostic-report" readonly rows="8">${esc(report)}</textarea>`;
+    const actions = '<button class="button" type="button" data-action="close-modal">Close</button><button class="button" type="button" data-action="copy-cloud-diagnostics">Copy report</button><button class="button primary" type="button" data-action="run-cloud-diagnostics">Run checks</button>';
+    return modal('Sync diagnostics', body, actions, 'sync-diagnostics-modal');
   }
   function privacyAcknowledgement() {
     const cloud = MATE.cloudSync ? MATE.cloudSync.state() : { privacyReady: false, privacyHref: './privacy.html' };
@@ -334,8 +347,8 @@
     root.document.getElementById('app').innerHTML = content;
     root.document.getElementById('bottom-nav').innerHTML = nav(page === 'task-form' || page === 'task-confirmation' ? '' : page === 'habit-categories' ? 'habits' : page);
   }
-  function modal(title, body, actions) {
-    return `<div class="modal-backdrop" data-action="modal-backdrop"><section class="glass modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title"><span class="eyebrow">MATE</span><h2 id="modal-title">${esc(title)}</h2>${body}${actions ? `<div class="actions">${actions}</div>` : ''}</section></div>`;
+  function modal(title, body, actions, className = '') {
+    return `<div class="modal-backdrop" data-action="modal-backdrop"><section class="glass modal-card ${esc(className)}" role="dialog" aria-modal="true" aria-labelledby="modal-title"><span class="eyebrow">MATE</span><h2 id="modal-title">${esc(title)}</h2>${body}${actions ? `<div class="actions">${actions}</div>` : ''}</section></div>`;
   }
   function habitForm(habit) {
     const editing = !!habit;
@@ -380,5 +393,5 @@
     const actions = '<button class="button" type="button" data-action="close-modal">Keep current timer</button><button class="button primary" type="button" data-action="switch-timer" data-id="' + esc(task.id) + '">Stop and switch</button>';
     return modal('One timer at a time', body, actions);
   }
-  MATE.screens = { render, updateCloudAccount, privacyAcknowledgement, deleteCloudAccountConfirmation, withdrawCloudConsentConfirmation, deleteLocalDataConfirmation, nav, modal, habitForm, habitCategoryForm, confirmDeleteHabitCategory, habitDayChoice, confirmDeleteHabit, timerResolution, switchTimer, mattCongratulations, helpers: { esc, fmtDate, fmtLongDate, fmtDuration, fmtClock, statCard, emptyState, taskCard } };
+  MATE.screens = { render, updateCloudAccount, privacyAcknowledgement, cloudDiagnostics, deleteCloudAccountConfirmation, withdrawCloudConsentConfirmation, deleteLocalDataConfirmation, nav, modal, habitForm, habitCategoryForm, confirmDeleteHabitCategory, habitDayChoice, confirmDeleteHabit, timerResolution, switchTimer, mattCongratulations, helpers: { esc, fmtDate, fmtLongDate, fmtDuration, fmtClock, statCard, emptyState, taskCard } };
 })(window);

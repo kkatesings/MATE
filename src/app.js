@@ -286,6 +286,32 @@
         else MATE.cloudSync.signInWithGoogle().catch(error => toast(error.message || 'Google sign-in failed.', 'error'));
         break;
       }
+      case 'cloud-diagnostics':
+        openModal(screens.cloudDiagnostics());
+        break;
+      case 'run-cloud-diagnostics': {
+        target.disabled = true;
+        MATE.cloudSync.runDiagnostics().then(() => {
+          document.getElementById('modal-root').innerHTML = screens.cloudDiagnostics();
+        }).catch(error => {
+          toast(error.message || 'Could not run sync diagnostics.', 'error');
+          target.disabled = false;
+        });
+        break;
+      }
+      case 'copy-cloud-diagnostics': {
+        const report = MATE.cloudSync.diagnosticReport();
+        const copy = root.navigator && root.navigator.clipboard && root.navigator.clipboard.writeText
+          ? root.navigator.clipboard.writeText(report)
+          : Promise.reject(new Error('Clipboard access is unavailable.'));
+        copy.then(() => toast('Diagnostic report copied.'))
+          .catch(() => {
+            const field = document.getElementById('sync-diagnostic-report');
+            if (field) { field.focus(); field.select(); }
+            toast('Report selected. Copy it with Ctrl+C.', 'error');
+          });
+        break;
+      }
       case 'review-privacy': openModal(screens.privacyAcknowledgement()); break;
       case 'export-local-data':
         try { data.downloadLocalData(); toast('Your local MATE data copy is ready.'); }

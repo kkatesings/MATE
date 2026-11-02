@@ -43,7 +43,7 @@
         <span class="badge aqua">${esc(MATE.i18n.label(task.category))}</span><span class="badge priority-${esc(task.priority.toLowerCase())}">${esc(MATE.i18n.label(task.priority))}</span>${due}${project}
         ${task.totalFocusTime ? `<span class="badge">◷ ${fmtDuration(task.totalFocusTime)}</span>` : '<span class="badge">No focus time yet</span>'}
       </div></div>
-      ${!compact ? `<div class="task-actions">${active ? `<span class="timer-active" data-timer-elapsed="${esc(task.id)}">${fmtClock(timerMs)}</span><button class="button small-button" type="button" data-action="stop-timer" data-id="${esc(task.id)}">Stop</button>` : task.status === 'open' ? `<button class="button small-button" type="button" data-action="start-timer" data-id="${esc(task.id)}" aria-label="Start timer for ${esc(task.name)}">▶ Timer</button>` : `<button class="button small-button" type="button" data-action="toggle-task" data-id="${esc(task.id)}">Reopen</button>`}</div>` : ''}
+      ${!compact ? `<div class="task-actions">${active ? `<span class="timer-active" data-timer-elapsed="${esc(task.id)}">${fmtClock(timerMs)}</span><button class="button small-button" type="button" data-action="stop-timer" data-id="${esc(task.id)}">Stop</button>` : task.status === 'open' ? `<button class="button small-button" type="button" data-action="start-timer" data-id="${esc(task.id)}" aria-label="Start timer for ${esc(task.name)}">▶ Timer</button>` : `<button class="button small-button" type="button" data-action="toggle-task" data-id="${esc(task.id)}">Reopen</button>`}<button class="icon-button" type="button" data-action="edit-task" data-id="${esc(task.id)}" aria-label="Edit ${esc(task.name)}" title="Edit task">✎</button><button class="icon-button" type="button" data-action="delete-task" data-id="${esc(task.id)}" aria-label="Delete ${esc(task.name)}" title="Delete task">×</button></div>` : ''}
     </article>`;
   }
   const habitHeadingActions = () => '<div class="habit-heading-actions"><button class="button" type="button" data-action="manage-habit-categories">New category</button><button class="button primary" type="button" data-action="new-habit">+ New habit</button></div>';
@@ -80,12 +80,17 @@
       <section class="glass panel"><div class="stats-toolbar"><div class="filter-row" role="group" aria-label="Filter tasks">${tabs}</div><span class="muted small">${state.tasks.length} total ${state.tasks.length === 1 ? 'task' : 'tasks'}</span></div>${list.length ? `<div class="task-list">${list.map(task => taskCard(task)).join('')}</div>` : emptyState(filter === 'completed' ? 'No completed tasks yet' : filter === 'all' ? 'The board is empty' : 'Nothing open right now',filter === 'completed' ? MATE.matt.message('emptyTasksCompleted') : MATE.matt.message(filter === 'all' ? 'emptyTasksAll' : 'emptyTasksOpen'),filter !== 'completed' ? '<button class="button primary small-button" type="button" data-action="add-task">+ Add a task</button>' : '')}</section>${persistenceNote()}`;
   }
 
-  function taskForm() {
+  function taskForm(task = null, asModal = false) {
+    const editing = !!task;
+    const categories = getCategories();
+    if (editing && task.category && !categories.includes(task.category)) categories.unshift(task.category);
+    const form = `<form id="task-form" novalidate><input type="hidden" name="id" value="${esc(editing ? task.id : '')}"/><div class="form-grid"><div class="field full"><label for="task-name">Task name <span aria-hidden="true">*</span></label><input id="task-name" name="name" type="text" maxlength="160" required autofocus placeholder="What needs doing?" autocomplete="off" value="${esc(editing ? task.name : '')}" /><p class="form-error" id="task-name-error" aria-live="polite"></p></div>
+        <div class="field"><label for="task-category">Category</label><select id="task-category" name="category">${options(categories,editing ? task.category : (categories.includes('Personal') ? 'Personal' : categories[0]))}</select></div><div class="field"><label for="task-priority">Priority</label><select id="task-priority" name="priority">${options(PRIORITIES,editing ? task.priority : 'Medium')}</select></div>
+        <div class="field"><label for="task-due">Due date</label><input id="task-due" name="dueDate" type="date" value="${esc(editing ? task.dueDate : '')}" /></div><div class="field"><label for="task-project">Project <span class="muted">(optional)</span></label><input id="task-project" name="project" type="text" maxlength="100" placeholder="A bigger thing this belongs to" value="${esc(editing ? task.project : '')}" /></div>
+        <div class="field full"><label for="task-notes">Notes <span class="muted">(optional)</span></label><textarea id="task-notes" name="notes" maxlength="2000" placeholder="Any details worth keeping nearby?">${esc(editing ? task.notes : '')}</textarea></div></div><div class="form-actions"><button type="button" class="button" ${asModal ? 'data-action="close-modal"' : 'data-nav="tasks"'}>Cancel</button><button type="button" class="button primary" id="save-task" data-action="save-task">${editing ? 'Save changes' : 'Save task'} <span aria-hidden="true">→</span></button></div></form>`;
+    if (asModal) return modal(editing ? 'Edit task' : 'Add a task', form, '', 'task-edit-modal');
     return `${topbar()}${heading('Add a task','One clear next step','Give it a name. The rest can be filled in later if you are in a hurry.')}
-      <section class="glass panel" style="max-width:760px"><form id="task-form" novalidate><div class="form-grid"><div class="field full"><label for="task-name">Task name <span aria-hidden="true">*</span></label><input id="task-name" name="name" type="text" maxlength="160" required autofocus placeholder="What needs doing?" autocomplete="off" /><p class="form-error" id="task-name-error" aria-live="polite"></p></div>
-        <div class="field"><label for="task-category">Category</label><select id="task-category" name="category">${options(getCategories(),'Personal')}</select></div><div class="field"><label for="task-priority">Priority</label><select id="task-priority" name="priority">${options(PRIORITIES,'Medium')}</select></div>
-        <div class="field"><label for="task-due">Due date</label><input id="task-due" name="dueDate" type="date" /></div><div class="field"><label for="task-project">Project <span class="muted">(optional)</span></label><input id="task-project" name="project" type="text" maxlength="100" placeholder="A bigger thing this belongs to" /></div>
-        <div class="field full"><label for="task-notes">Notes <span class="muted">(optional)</span></label><textarea id="task-notes" name="notes" maxlength="2000" placeholder="Any details worth keeping nearby?"></textarea></div></div><div class="form-actions"><button type="button" class="button" data-nav="tasks">Cancel</button><button type="submit" class="button primary" id="save-task">Save task <span aria-hidden="true">→</span></button></div></form></section>${persistenceNote()}`;
+      <section class="glass panel" style="max-width:760px">${form}</section>${persistenceNote()}`;
   }
   function taskConfirmation() {
     const state = getState(); const task = state.tasks[0];
@@ -382,6 +387,9 @@
   function confirmDeleteHabit(habit) {
     return modal('Delete this habit?',`<p><strong>${esc(habit.name)}</strong> will leave your active list. Its earlier check-ins and weekly history stay saved.</p>`,`<button class="button" type="button" data-action="close-modal">Keep it</button><button class="button danger" type="button" data-action="confirm-delete-habit" data-id="${esc(habit.id)}">Delete habit</button>`);
   }
+  function confirmDeleteTask(task) {
+    return modal('Delete this task?', `<p><strong>${esc(task.name)}</strong> will be removed from your task list. Previously saved focus sessions stay in your stats.</p>`, `<button class="button" type="button" data-action="close-modal">Keep task</button><button class="button danger" type="button" data-action="confirm-delete-task" data-id="${esc(task.id)}">Delete task</button>`);
+  }
   function timerResolution(task, elapsed, pendingNext) {
     const text = MATE.matt.message('timerResolution', { task: task ? task.name : 'a task', time: fmtDuration(elapsed), pending: pendingNext });
     const body = '<p>' + esc(text) + '</p>';
@@ -394,5 +402,5 @@
     const actions = '<button class="button" type="button" data-action="close-modal">Keep current timer</button><button class="button primary" type="button" data-action="switch-timer" data-id="' + esc(task.id) + '">Stop and switch</button>';
     return modal('One timer at a time', body, actions);
   }
-  MATE.screens = { render, updateCloudAccount, privacyAcknowledgement, cloudDiagnostics, deleteCloudAccountConfirmation, withdrawCloudConsentConfirmation, deleteLocalDataConfirmation, nav, modal, habitForm, habitCategoryForm, confirmDeleteHabitCategory, habitDayChoice, confirmDeleteHabit, timerResolution, switchTimer, mattCongratulations, helpers: { esc, fmtDate, fmtLongDate, fmtDuration, fmtClock, statCard, emptyState, taskCard } };
+  MATE.screens = { render, updateCloudAccount, privacyAcknowledgement, cloudDiagnostics, deleteCloudAccountConfirmation, withdrawCloudConsentConfirmation, deleteLocalDataConfirmation, nav, modal, taskForm, confirmDeleteTask, habitForm, habitCategoryForm, confirmDeleteHabitCategory, habitDayChoice, confirmDeleteHabit, timerResolution, switchTimer, mattCongratulations, helpers: { esc, fmtDate, fmtLongDate, fmtDuration, fmtClock, statCard, emptyState, taskCard } };
 })(window);

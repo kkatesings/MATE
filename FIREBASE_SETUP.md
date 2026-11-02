@@ -74,3 +74,4 @@ While signed in, MATE provides Export data (downloads a JSON copy) and Delete ac
 4. Confirm the GitHub Pages hostname is the only production Authorized Domain needed for Google sign-in. Do not invite testers until Google login, account deletion, export, consent refusal, and consent withdrawal have been checked on the HTTPS site.
 
 Firebase documents the [API key guidance](https://firebase.google.com/docs/projects/api-keys) and [Firestore Rules simulator](https://firebase.google.com/docs/firestore/security/get-started). App Check can be considered as an additional abuse-prevention layer later; it does not replace Security Rules.
+

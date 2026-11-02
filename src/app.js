@@ -7,6 +7,7 @@
   const matt = MATE.matt;
   const appState = { page: 'welcome', taskFilter: 'open', statsPeriod: 'weekly', welcomeGreeting: '', homeGreeting: '', habitWeekOffset: 0, selectedHabitDate: '' };
   let taskSubmitting = false;
+  let pendingDeleteTask = null;
   let pendingDeleteHabit = null;
   let installPrompt = null;
   let observedHabitDate = data.habitDateKey();
@@ -33,7 +34,7 @@
     document.getElementById('modal-root').innerHTML = markup;
     root.setTimeout(() => document.querySelector('#modal-root input:not([type="hidden"]), #modal-root button')?.focus(), 0);
   }
-  function closeModal() { document.getElementById('modal-root').innerHTML = ''; pendingDeleteHabit = null; }
+  function closeModal() { document.getElementById('modal-root').innerHTML = ''; pendingDeleteTask = null; pendingDeleteHabit = null; }
   function showTimerResolution() {
     const timer = data.getState().activeTimer; if (!timer) return;
     const task = data.findTask(timer.taskId);
@@ -142,6 +143,39 @@
       document.getElementById('habit-name')?.focus();
     }
   }
+  function saveTaskForm(form) {
+    if (!form || taskSubmitting) return;
+    const fields = new FormData(form);
+    const error = document.getElementById('task-name-error');
+    const name = String(fields.get('name') || '').trim();
+    const input = document.getElementById('task-name');
+    const id = String(fields.get('id') || '');
+    if (!name) { if (error) error.textContent = 'Give the task a name before saving.'; input?.focus(); return; }
+    taskSubmitting = true;
+    const button = document.getElementById('save-task');
+    if (button) button.disabled = true;
+    const taskFields = { name, category: fields.get('category'), priority: fields.get('priority'), dueDate: fields.get('dueDate'), project: fields.get('project'), notes: fields.get('notes') };
+    try {
+      if (id) {
+        data.editTask(id, taskFields);
+        taskSubmitting = false;
+        closeModal();
+        render();
+        toast('Task updated.');
+      } else {
+        data.addTask(taskFields);
+        taskSubmitting = false;
+        appState.page = 'task-confirmation';
+        render();
+        toast(matt.message('taskAdded'));
+      }
+    } catch (err) {
+      taskSubmitting = false;
+      if (button) button.disabled = false;
+      if (error) error.textContent = err.message;
+      input?.focus();
+    }
+  }
 
   function updateMattSettingsView(preferences, statusText) {
     ['humor','firmness'].forEach(key => {
@@ -187,6 +221,38 @@
         }
         render();
         if (congratulations) openModal(screens.mattCongratulations(congratulations));
+        break;
+      }
+      case 'edit-task': {
+        const task = data.findTask(target.dataset.id);
+        if (task) openModal(screens.taskForm(task, true));
+        break;
+      }
+      case 'save-task':
+        event.preventDefault();
+        saveTaskForm(document.getElementById('task-form'));
+        break;
+      case 'delete-task': {
+        const task = data.findTask(target.dataset.id);
+        if (!task) break;
+        const active = data.getState().activeTimer;
+        if (active && active.taskId === task.id) {
+          toast('Stop and save this task’s timer before deleting it.', 'error');
+          break;
+        }
+        pendingDeleteTask = task.id;
+        openModal(screens.confirmDeleteTask(task));
+        break;
+      }
+      case 'confirm-delete-task': {
+        const id = pendingDeleteTask || target.dataset.id;
+        try {
+          const task = data.findTask(id);
+          if (!data.deleteTask(id)) throw new Error('That task is no longer in your list.');
+          closeModal();
+          render();
+          if (task) toast('Task deleted. Its saved focus sessions remain in your stats.');
+        } catch (err) { toast(err.message || 'Could not delete this task.', 'error'); }
         break;
       }
       case 'start-timer': startTimer(target.dataset.id); break;
@@ -391,24 +457,13 @@
   document.addEventListener('submit', event => {
     const form = event.target;
     if (form.id === 'task-form') {
-      event.preventDefault(); if (taskSubmitting) return;
-      const fields = new FormData(form); const name = String(fields.get('name') || '').trim();
-      const input = document.getElementById('task-name'); const error = document.getElementById('task-name-error');
-      if (!name) { error.textContent = 'Give the task a name before saving.'; input?.focus(); return; }
-      taskSubmitting = true; const button = document.getElementById('save-task'); if (button) button.disabled = true;
-      try {
-        data.addTask({ name, category: fields.get('category'), priority: fields.get('priority'), dueDate: fields.get('dueDate'), project: fields.get('project'), notes: fields.get('notes') });
-        taskSubmitting = false; appState.page = 'task-confirmation'; render();
-        toast(matt.message('taskAdded'));
-      } catch (err) {
-        taskSubmitting = false; if (button) button.disabled = false; error.textContent = err.message; input?.focus();
-      }
+      event.preventDefault(); saveTaskForm(form);
     } else if (form.id === 'habit-form') {
       event.preventDefault(); saveHabitForm(form);
     } else if (form.id === 'habit-category-form') {
       event.preventDefault(); saveHabitCategoryForm(form);
     }
-  });
+  }, true);
 
   document.addEventListener('change', event => {
     if (event.target.id === 'privacy-consent-checkbox') {
@@ -471,7 +526,7 @@
   render();
   if (MATE.cloudSync) MATE.cloudSync.subscribe(detail => {
     screens.updateCloudAccount();
-    if (detail && detail.dataChanged) render();
+    if ((detail && detail.dataChanged) || appState.page === 'matt-settings') render();
   });
   if (data.getState().activeTimer?.stoppedAt) showTimerResolution();
   root.setInterval(updateClock, 1000);

@@ -328,6 +328,36 @@
     state.tasks.unshift(task); save(); return task;
   }
   function findTask(taskId) { return state.tasks.find(task => task.id === taskId) || null; }
+  function editTask(taskId, input) {
+    const task = findTask(taskId);
+    const name = String(input.name || '').trim();
+    if (!task) throw new Error('That task is no longer in your list.');
+    if (!name) throw new Error('Give the task a name first.');
+    task.name = name;
+    task.category = state.categories.includes(input.category) || input.category === task.category
+      ? input.category
+      : (state.categories.includes('Personal') ? 'Personal' : state.categories[0]);
+    task.priority = PRIORITIES.includes(input.priority) ? input.priority : 'Medium';
+    task.dueDate = String(input.dueDate || '').trim();
+    task.project = String(input.project || '').trim();
+    task.notes = String(input.notes || '').trim();
+    task.updatedAt = new Date().toISOString();
+    save();
+    return task;
+  }
+  function deleteTask(taskId) {
+    const index = state.tasks.findIndex(task => task.id === taskId);
+    if (index < 0) return false;
+    if (state.activeTimer && state.activeTimer.taskId === taskId) throw new Error('Stop and save this task’s timer before deleting the task.');
+    state.tasks.splice(index, 1);
+    if (state.activeTimer && state.activeTimer.nextTaskId === taskId) {
+      state.activeTimer.nextTaskId = null;
+      state.activeTimerUpdatedAt = new Date().toISOString();
+    }
+    // Keep completed focus sessions as history; each session stores its own task name and category.
+    save();
+    return true;
+  }
   function completeTask(taskId) {
     const task = findTask(taskId); if (!task) return false;
     task.status = 'done'; task.completedAt = task.completedAt || new Date().toISOString(); task.updatedAt = new Date().toISOString(); save(); return true;
@@ -423,5 +453,5 @@
   // Persist schema migrations for existing data, but do not write a fresh seed record
   // merely because someone opened the app. A user's first action will save it.
   if (loadedStoredState) save();
-  MATE.data = { STORAGE_KEY, SCHEMA_VERSION, CATEGORIES, NEW_CATEGORY_VALUE, PRIORITIES, dateKey, habitDateKey, dayDate, uid, clone, getState, freshStateForCloud, hasMeaningfulData, replaceStateFromCloud, getCategories, addCategory, editCategory, deleteCategory, getDay, prepareHabitDay, copyHabitDay, declineHabitDay, currentPersistence, persist, downloadLocalData, clearLocalData, addTask, findTask, completeTask, reopenTask, setActiveTimer, stopTimer, queueNextTimer, resolveTimer, toggleHabit, addHabit, editHabit, deleteHabit };
+  MATE.data = { STORAGE_KEY, SCHEMA_VERSION, CATEGORIES, NEW_CATEGORY_VALUE, PRIORITIES, dateKey, habitDateKey, dayDate, uid, clone, getState, freshStateForCloud, hasMeaningfulData, replaceStateFromCloud, getCategories, addCategory, editCategory, deleteCategory, getDay, prepareHabitDay, copyHabitDay, declineHabitDay, currentPersistence, persist, downloadLocalData, clearLocalData, addTask, findTask, editTask, deleteTask, completeTask, reopenTask, setActiveTimer, stopTimer, queueNextTimer, resolveTimer, toggleHabit, addHabit, editHabit, deleteHabit };
 })(window);

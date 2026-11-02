@@ -428,13 +428,18 @@
       if (!auth) throw new Error('Firebase sign-in is not available yet.');
       initialSignInError = '';
       lastError = null;
-      setStage('Starting Google sign-in redirect');
+      setStage('Starting Google sign-in popup');
       setStatus('checking', 'Opening Google sign-in.');
       const provider = new root.firebase.auth.GoogleAuthProvider();
-      // The SDK is loaded on demand, so a popup after the network request may
-      // be blocked by browsers. Redirect sign-in works consistently on web and PWA.
-      return auth.signInWithRedirect(provider).catch(error => {
-        recordError(error, 'Starting Google sign-in');
+      // GitHub Pages is an external host. Firebase redirect sign-in needs extra
+      // same-site helper setup there, so use the documented popup flow instead.
+      return auth.signInWithPopup(provider).then(result => {
+        setStage('Google sign-in popup returned a user');
+        lastError = null;
+        emit({ dataChanged: false });
+        return result;
+      }).catch(error => {
+        recordError(error, 'Google sign-in popup');
         throw error;
       });
     });
@@ -448,11 +453,7 @@
     }));
     emit({ dataChanged: false });
     return initialize().then(() => {
-      if (currentUser) {
-        if (!refs) beginSync(currentUser);
-        return;
-      }
-      return signInWithGoogle();
+      if (currentUser && !refs) beginSync(currentUser);
     });
   }
   function exportData() {

@@ -341,6 +341,7 @@
         MATE.cloudSync.grantCloudConsent().then(() => {
           closeModal();
           render();
+          if (!MATE.cloudSync.state().user) toast('Consent saved. Choose Sign in with Google in the header to connect your account.');
         }).catch(error => {
           target.disabled = false;
           toast(error.message || 'Could not continue.', 'error');

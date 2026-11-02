@@ -49,6 +49,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .top-date, .eyebrow, .mono { font-family: Consolas, 'Courier New', monospace; }
 .top-date { color: var(--aqua); font-size: 11px; letter-spacing: .09em; text-transform: uppercase; }
 .tone-settings { display: grid; gap: 18px; max-width: 780px; }
+.matt-about { max-width: 780px; margin: 0 0 16px; padding: 17px 20px; }
+.matt-about summary { color: var(--aqua); font-size: 14px; font-weight: 700; cursor: pointer; }
+.matt-about summary:focus-visible { outline: 2px solid var(--aqua); outline-offset: 4px; border-radius: 3px; }
+.matt-about p { margin: 13px 0 0; color: var(--muted); font-size: 13px; line-height: 1.65; }
 .tone-setting { display: grid; gap: 10px; padding: 18px; border: 1px solid var(--border); border-radius: 16px; background: rgba(255,255,255,.025); }
 .tone-setting-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .tone-setting-head label { color: var(--text); font-size: 14px; font-weight: 700; }

@@ -5,7 +5,8 @@
   const screens = MATE.screens;
   const analytics = MATE.analytics;
   const matt = MATE.matt;
-  const appState = { page: 'welcome', taskFilter: 'open', statsPeriod: 'weekly', welcomeGreeting: '', homeGreeting: '', habitWeekOffset: 0, selectedHabitDate: '', lastSavedTaskName: '' };
+  const appIsInstalled = () => !!((root.matchMedia && root.matchMedia('(display-mode: standalone)').matches) || (root.navigator && root.navigator.standalone === true));
+  const appState = { page: 'welcome', taskFilter: 'open', statsPeriod: 'weekly', welcomeGreeting: '', homeGreeting: '', habitWeekOffset: 0, selectedHabitDate: '', lastSavedTaskName: '', installAvailable: !appIsInstalled() };
   let taskSubmitting = false;
   let pendingDeleteTask = null;
   let pendingDeleteHabit = null;
@@ -104,11 +105,11 @@
     try {
       await prompt.prompt();
       const choice = await prompt.userChoice;
-      appState.installAvailable = false;
+      appState.installAvailable = !(choice && choice.outcome === 'accepted') && !appIsInstalled();
       render();
       toast(matt.message(choice && choice.outcome === 'accepted' ? 'installAccepted' : 'installDeclined'));
     } catch (error) {
-      appState.installAvailable = false;
+      appState.installAvailable = !appIsInstalled();
       render();
       toast(matt.message('installFallback'));
     }

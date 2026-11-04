@@ -3,6 +3,7 @@
   const MATE = root.MATE = root.MATE || {};
   const { CATEGORIES, NEW_CATEGORY_VALUE, PRIORITIES, dateKey, habitDateKey, dayDate, getState, getCategories, getDay, currentPersistence, findTask } = MATE.data;
   const { dashboard, habitStats, weekHabits, summarize, durationInRange, startOfWeek, shiftDay, previousPeriodDate } = MATE.analytics;
+  let showInstallOption = true;
   const esc = value => String(value == null ? '' : value).replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
   const fmtDate = (key, options = { month: 'short', day: 'numeric' }) => key ? new Intl.DateTimeFormat(MATE.i18n.locale(), options).format(new Date(key + 'T12:00:00')) : '';
   const fmtLongDate = date => new Intl.DateTimeFormat(MATE.i18n.locale(), { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(date);
@@ -17,7 +18,7 @@
   };
   const options = (items, selected) => items.map(item => `<option value="${esc(item)}" ${item === selected ? 'selected' : ''}>${esc(MATE.i18n.label(item))}</option>`).join('');
   const categoryOptions = selected => `${options(getCategories(), selected)}<option value="${NEW_CATEGORY_VALUE}">New category</option>`;
-  const topbar = () => `<header class="topbar"><a class="brand" href="#" data-action="welcome" aria-label="MATE home"><span class="brand-mark">M</span><span class="brand-name">MATE</span></a><time class="top-date">${fmtLongDate(new Date())}</time><div class="topbar-menu-wrap"><button class="icon-button mobile-menu-toggle" type="button" data-action="toggle-mobile-menu" aria-label="Account and settings menu" aria-controls="topbar-menu" aria-expanded="false"><span aria-hidden="true">☰</span></button><nav class="topbar-menu" id="topbar-menu" aria-label="Account and settings"><div id="cloud-account" class="cloud-account"></div><button class="icon-button tone-settings-link" type="button" data-nav="matt-settings" aria-label="Matt settings" title="Matt settings"><span aria-hidden="true">⚙</span><span class="menu-settings-label">Settings</span></button></nav></div></header>`;
+  const topbar = () => `<header class="topbar"><a class="brand" href="#" data-action="welcome" aria-label="MATE home"><span class="brand-mark">M</span><span class="brand-name">MATE</span></a><time class="top-date">${fmtLongDate(new Date())}</time><div class="topbar-menu-wrap"><button class="icon-button mobile-menu-toggle" type="button" data-action="toggle-mobile-menu" aria-label="Account and settings menu" aria-controls="topbar-menu" aria-expanded="false"><span aria-hidden="true">☰</span></button><nav class="topbar-menu" id="topbar-menu" aria-label="Account and settings"><div id="cloud-account" class="cloud-account"></div>${showInstallOption ? '<button class="button small-button auth-button install-menu-button" type="button" data-action="install-app">Install MATE <span aria-hidden="true">↓</span></button>' : ''}<button class="icon-button tone-settings-link" type="button" data-nav="matt-settings" aria-label="Matt settings" title="Matt settings"><span aria-hidden="true">⚙</span><span class="menu-settings-label">Settings</span></button></nav></div></header>`;
   const heading = (title, eyebrow, subtitle = '', action = '') => `<div class="page-heading"><div><span class="eyebrow">${esc(eyebrow)}</span><h1>${esc(title)}</h1>${subtitle ? `<p class="subheading">${esc(subtitle)}</p>` : ''}</div>${action}</div>`;
   const statCard = (label, value, note, icon, trend = null) => {
     const mark = trend
@@ -70,7 +71,7 @@
 
   function welcome(pageState) {
     const greeting = pageState.welcomeGreeting;
-    return `${topbar()}<section class="welcome"><div class="welcome-orbit" aria-hidden="true"><div class="atom-scene"><span class="atom-nucleus"><i></i><i></i><i></i><i></i></span><span class="atom-orbit orbit-one"><i></i></span><span class="atom-orbit orbit-two"><i></i></span><span class="atom-orbit orbit-three"><i></i></span></div></div><h1>MATE</h1><p class="welcome-name">Personal Accountability System</p><p class="tagline">Check-MATE to your to-do list.</p><p class="welcome-greeting">${esc(greeting)}</p><div class="welcome-actions"><button class="button primary" type="button" data-action="enter-home">Let's get to it <span aria-hidden="true">→</span></button>${pageState.installAvailable ? '<button class="button" type="button" data-action="install-app">Install MATE <span aria-hidden="true">↓</span></button>' : ''}</div></section>`;
+    return `${topbar()}<section class="welcome"><div class="welcome-orbit" aria-hidden="true"><div class="atom-scene"><span class="atom-nucleus"><i></i><i></i><i></i><i></i></span><span class="atom-orbit orbit-one"><i></i></span><span class="atom-orbit orbit-two"><i></i></span><span class="atom-orbit orbit-three"><i></i></span></div></div><h1>MATE</h1><p class="welcome-name">Personal Accountability System</p><p class="tagline">Check-MATE to your to-do list.</p><p class="welcome-greeting">${esc(greeting)}</p><div class="welcome-actions"><button class="button primary" type="button" data-action="enter-home">Let's get to it <span aria-hidden="true">→</span></button></div></section>`;
   }
 
   function home(greeting) {
@@ -370,6 +371,7 @@
     return modal('Delete data on this device?', body, actions);
   }
   function render(page, pageState) {
+    showInstallOption = !(pageState && pageState.installAvailable === false);
     let content;
     switch(page) {
       case 'home': content = home(pageState.homeGreeting); break;

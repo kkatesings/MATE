@@ -176,8 +176,8 @@
       { id: 'export-dry', humor: 42, firmness: 22, text: 'Exported. The spreadsheet now has the receipts for {period}.' }
     ],
     installInstructions: [
-      { id: 'install-help-soft', humor: 2, firmness: 10, text: 'Use your browser menu and choose Install app to add MATE to this phone.' },
-      { id: 'install-help-dry', humor: 38, firmness: 18, text: 'Your browser menu has the install option. MATE is ready when you are.' }
+      { id: 'install-help-soft', humor: 2, firmness: 10, text: 'Use your browser’s Share menu and choose Add to Home Screen or Install app to keep MATE on this device.' },
+      { id: 'install-help-dry', humor: 38, firmness: 18, text: 'Your browser’s Share or menu button has Add to Home Screen or Install app. MATE is ready when you are.' }
     ],
     installAccepted: [
       { id: 'install-accepted-soft', humor: 2, firmness: 8, text: 'MATE is ready on your home screen.' },
@@ -188,8 +188,8 @@
       { id: 'install-declined-dry', humor: 40, firmness: 18, text: 'No rush. MATE will wait in the browser. Patiently, apparently.' }
     ],
     installFallback: [
-      { id: 'install-fallback-soft', humor: 2, firmness: 8, text: 'Use your browser menu to install MATE on this phone.' },
-      { id: 'install-fallback-dry', humor: 36, firmness: 16, text: 'The install prompt wandered off. The browser menu still has it.' }
+      { id: 'install-fallback-soft', humor: 2, firmness: 8, text: 'Use your browser’s Share menu and choose Add to Home Screen or Install app.' },
+      { id: 'install-fallback-dry', humor: 36, firmness: 16, text: 'The install prompt wandered off. Check the browser’s Share or menu button for Add to Home Screen or Install app.' }
     ],
     emptyHomeTasks: [
       { id: 'empty-home-soft', humor: 5, firmness: 10, text: 'No tasks on today’s calendar. Add one when you’re ready.' },

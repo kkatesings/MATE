@@ -36,14 +36,17 @@
     const timerMs = active ? (state.activeTimer.stoppedAt ? new Date(state.activeTimer.stoppedAt) : new Date()).getTime() - new Date(state.activeTimer.startedAt).getTime() : 0;
     const due = task.dueDate ? `<span class="badge ${task.status === 'open' && task.dueDate < dateKey() ? 'priority-urgent' : ''}">◷ ${esc(task.dueDate === dateKey() ? 'Today' : fmtDate(task.dueDate))}</span>` : '';
     const project = task.project ? `<span class="badge">▦ ${esc(task.project)}</span>` : '';
-    return `<article class="task-card ${task.status === 'done' ? 'completed' : ''}" data-task-id="${esc(task.id)}">
+    const compactTimer = task.status !== 'open' ? '' : active
+      ? `<span class="timer-active" data-timer-elapsed="${esc(task.id)}">${fmtClock(timerMs)}</span><button class="button small-button" type="button" data-action="${state.activeTimer.stoppedAt ? 'resolve-pending' : 'stop-timer'}" data-id="${esc(task.id)}">${state.activeTimer.stoppedAt ? 'Save' : 'Stop'}</button>`
+      : `<button class="button small-button" type="button" data-action="start-timer" data-id="${esc(task.id)}" aria-label="Start timer for ${esc(task.name)}">▶ Timer</button>`;
+    return `<article class="task-card priority-${esc(task.priority.toLowerCase())} ${task.status === 'done' ? 'completed' : ''}" data-task-id="${esc(task.id)}">
       <button class="task-check" type="button" data-action="toggle-task" data-id="${esc(task.id)}" aria-label="${task.status === 'done' ? 'Reopen' : 'Complete'} ${esc(task.name)}">${task.status === 'done' ? '✓' : '✓'}</button>
       <div class="task-main"><p class="task-name">${esc(task.name)}</p><div class="task-meta">
         ${task.status === 'done' ? '<span class="badge green">✓ COMPLETED</span>' : ''}
         <span class="badge aqua">${esc(MATE.i18n.label(task.category))}</span><span class="badge priority-${esc(task.priority.toLowerCase())}">${esc(MATE.i18n.label(task.priority))}</span>${due}${project}
         ${task.totalFocusTime ? `<span class="badge">◷ ${fmtDuration(task.totalFocusTime)}</span>` : '<span class="badge">No focus time yet</span>'}
       </div></div>
-      ${!compact ? `<div class="task-actions">${active ? `<span class="timer-active" data-timer-elapsed="${esc(task.id)}">${fmtClock(timerMs)}</span><button class="button small-button" type="button" data-action="stop-timer" data-id="${esc(task.id)}">Stop</button>` : task.status === 'open' ? `<button class="button small-button" type="button" data-action="start-timer" data-id="${esc(task.id)}" aria-label="Start timer for ${esc(task.name)}">▶ Timer</button>` : `<button class="button small-button" type="button" data-action="toggle-task" data-id="${esc(task.id)}">Reopen</button>`}<button class="icon-button" type="button" data-action="edit-task" data-id="${esc(task.id)}" aria-label="Edit ${esc(task.name)}" title="Edit task">✎</button><button class="icon-button" type="button" data-action="delete-task" data-id="${esc(task.id)}" aria-label="Delete ${esc(task.name)}" title="Delete task">×</button></div>` : ''}
+      ${compact ? (compactTimer ? `<div class="task-actions">${compactTimer}</div>` : '') : `<div class="task-actions">${active ? `<span class="timer-active" data-timer-elapsed="${esc(task.id)}">${fmtClock(timerMs)}</span><button class="button small-button" type="button" data-action="stop-timer" data-id="${esc(task.id)}">Stop</button>` : task.status === 'open' ? `<button class="button small-button" type="button" data-action="start-timer" data-id="${esc(task.id)}" aria-label="Start timer for ${esc(task.name)}">▶ Timer</button>` : `<button class="button small-button" type="button" data-action="toggle-task" data-id="${esc(task.id)}">Reopen</button>`}<button class="icon-button" type="button" data-action="edit-task" data-id="${esc(task.id)}" aria-label="Edit ${esc(task.name)}" title="Edit task">✎</button><button class="icon-button" type="button" data-action="delete-task" data-id="${esc(task.id)}" aria-label="Delete ${esc(task.name)}" title="Delete task">×</button></div>`}
     </article>`;
   }
   const habitHeadingActions = () => '<div class="habit-heading-actions"><button class="button" type="button" data-action="manage-habit-categories">New category</button><button class="button primary" type="button" data-action="new-habit">+ New habit</button></div>';
@@ -73,7 +76,8 @@
 
   function tasks(pageState) {
     const state = getState(); const filter = pageState.taskFilter || 'open';
-    const list = state.tasks.filter(t => filter === 'all' || (filter === 'completed' ? t.status === 'done' : t.status === 'open'));
+    const list = state.tasks.filter(t => filter === 'all' || (filter === 'completed' ? t.status === 'done' : t.status === 'open'))
+      .sort((a, b) => (a.dueDate || '9999-12-31').localeCompare(b.dueDate || '9999-12-31'));
     const tabs = ['open','completed','all'].map(tab => `<button type="button" class="filter-chip ${filter === tab ? 'active' : ''}" data-action="task-filter" data-task-filter="${tab}" aria-pressed="${filter === tab}">${esc(MATE.i18n.label(tab))} <span class="mono">${state.tasks.filter(t => tab === 'all' || (tab === 'completed' ? t.status === 'done' : t.status === 'open')).length}</span></button>`).join('');
     const overdue = state.tasks.filter(t => t.status === 'open' && t.dueDate && t.dueDate < dateKey()).length;
     return `${topbar()}${activeTimerBanner()}${heading('Tasks','The board',overdue ? `${overdue} overdue. They’re not going to reschedule themselves.` : 'A clear list, a running timer, and fewer places to hide.','<button class="button primary" type="button" data-action="add-task">+ Add task</button>')}

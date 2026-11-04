@@ -160,6 +160,30 @@
   }
 
   function msHours(ms) { const hours = (Number(ms)||0)/3600000; return hours >= 10 ? `${hours.toFixed(0)}h` : `${hours.toFixed(1)}h`; }
+  function chartHours(ms) {
+    const hours = (Number(ms) || 0) / 3600000;
+    if (hours === 0) return '0h';
+    if (hours < 0.1) return '<0.1h';
+    return `${hours >= 10 ? hours.toFixed(0) : hours.toFixed(1)}h`;
+  }
+  function focusBarChart(bins, ariaLabel, className = '') {
+    const hourMs = 60 * 60 * 1000;
+    const maxMs = Math.max(5 * hourMs, ...bins.map(bin => Number(bin.focus) || 0));
+    const maxHours = maxMs / hourMs;
+    const ticks = Array.from({ length: 6 }, (_, index) => maxHours * (1 - index / 5));
+    const axisLabel = hours => `${hours === 0 ? '0' : Number.isInteger(hours) ? hours.toFixed(0) : hours.toFixed(1)}h`;
+    return `<div class="focus-chart-scroll"><div class="focus-chart ${className}" role="group" aria-label="${esc(ariaLabel)}">
+      <div class="focus-chart-axis" aria-hidden="true">${ticks.map((tick, index) => `<span style="top:${index * 20}%">${axisLabel(tick)}</span>`).join('')}</div>
+      <div class="focus-chart-main"><div class="focus-chart-grid" aria-hidden="true">${ticks.map((_, index) => `<span style="top:${index * 20}%"></span>`).join('')}</div>
+        <div class="focus-chart-columns">${bins.map(bin => {
+          const focus = Math.max(0, Number(bin.focus) || 0);
+          const height = focus ? focus / maxMs * 100 : 0;
+          const detail = `${bin.label}: ${msHours(focus)} focus`;
+          return `<div class="focus-chart-column tooltip-wrap" role="img" aria-label="${esc(detail)}" tabindex="0" data-tooltip="${esc(detail)}"><span class="focus-chart-value" style="--bar-height:${height}%">${chartHours(focus)}</span><div class="focus-chart-bar ${focus ? 'has-value' : ''}" style="--bar-height:${height}%"></div><span class="focus-chart-label" title="${esc(bin.label)}">${esc(bin.label)}</span></div>`;
+        }).join('')}</div>
+      </div>
+    </div></div>`;
+  }
   function breakdown(rows) {
     if (!rows.length) return emptyState('No focus sessions in this range',MATE.matt.message('emptyFocus'));
     const max = Math.max(...rows.map(r=>r.value),1);
@@ -197,15 +221,13 @@
         weeks.push({ label, focus });
         weekStart = shiftDay(weekStart, 7);
       }
-      const max = Math.max(...weeks.map(week => week.focus), 1);
-      return `<div class="monthly-chart-scroll"><div class="chart-bars chart-bars-monthly" role="img" aria-label="Monthly focus time by Monday-to-Sunday weeks">${weeks.map(week => `<div class="chart-column tooltip-wrap" tabindex="0" data-tooltip="${esc(week.label)}: ${esc(msHours(week.focus))} focus"><div class="chart-bar" style="height:${Math.max(week.focus?4:2,week.focus/max*100)}%"></div><span class="chart-label" title="${esc(week.label)}">${esc(week.label)}</span></div>`).join('')}</div></div>`;
+      return focusBarChart(weeks.map(week => ({ label: week.label, focus: week.focus })), 'Monthly focus time by Monday-to-Sunday weeks', 'focus-chart-monthly focus-chart-wide');
     }
     let bins;
     if (period === 'yearly') {
       bins = Array.from({length:12},(_,m)=>({label:new Intl.DateTimeFormat(MATE.i18n.locale(),{month:'short'}).format(new Date(2020,m,1)), focus:summary.days.filter(d=>new Date(d.date+'T12:00:00').getMonth()===m).reduce((a,d)=>a+d.focus,0), done:summary.days.filter(d=>new Date(d.date+'T12:00:00').getMonth()===m).reduce((a,d)=>a+d.done,0)}));
     } else bins = summary.days.map(d=>({label:period === 'daily' ? 'Today' : new Intl.DateTimeFormat(MATE.i18n.locale(),{weekday:'short'}).format(new Date(d.date+'T12:00:00')),focus:d.focus,done:d.done}));
-    const max = Math.max(...bins.map(b=>b.focus), 1);
-    return bins.length ? `<div class="chart-bars" role="img" aria-label="Focus time trend">${bins.map(bin=>`<div class="chart-column tooltip-wrap" tabindex="0" data-tooltip="${esc(bin.label)}: ${esc(msHours(bin.focus))} focus"><div class="chart-bar" style="height:${Math.max(bin.focus?4:2,bin.focus/max*100)}%"></div><span class="chart-label">${esc(bin.label)}</span></div>`).join('')}</div>` : emptyState('No daily records',MATE.matt.message('emptyRecords'));
+    return bins.length ? focusBarChart(bins, 'Focus time trend', period === 'yearly' ? 'focus-chart-wide' : '') : emptyState('No daily records',MATE.matt.message('emptyRecords'));
   }
   function comparison(current, previous, period) {
     if (!Number.isFinite(current) || !Number.isFinite(previous)) return { symbol: '&mdash;', className: 'trend-na', label: `No comparison with the previous ${period}.` };

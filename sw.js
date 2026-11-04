@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mate-shell-v22';
+const CACHE_NAME = 'mate-shell-v23';
 const APP_SHELL = [
   './index.html',
   './styles.css',

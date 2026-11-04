@@ -31,6 +31,17 @@
     return p.message ? `<div class="note" role="status">${esc(p.message)}</div>` : '';
   };
 
+  function sortTasksByDueAndPriority(tasks) {
+    const urgency = task => {
+      const index = PRIORITIES.indexOf(task.priority);
+      return index < 0 ? PRIORITIES.length : PRIORITIES.length - index - 1;
+    };
+    return tasks.slice().sort((a, b) => {
+      const dateOrder = (a.dueDate || '9999-12-31').localeCompare(b.dueDate || '9999-12-31');
+      return dateOrder || urgency(a) - urgency(b);
+    });
+  }
+
   function taskCard(task, compact = false) {
     const state = getState(); const active = state.activeTimer && state.activeTimer.taskId === task.id;
     const timerMs = active ? (state.activeTimer.stoppedAt ? new Date(state.activeTimer.stoppedAt) : new Date()).getTime() - new Date(state.activeTimer.startedAt).getTime() : 0;
@@ -64,7 +75,9 @@
 
   function home(greeting) {
     const d = dashboard(); const state = getState(); const percent = d.percent == null ? 0 : d.percent;
-    const todayList = d.tasks.length ? d.tasks : state.tasks.filter(t => t.status === 'open').slice(0, 3);
+    const todayList = d.tasks.length
+      ? sortTasksByDueAndPriority(d.tasks)
+      : sortTasksByDueAndPriority(state.tasks.filter(t => t.status === 'open')).slice(0, 3);
     const listLabel = d.tasks.length ? 'Due today' : 'A few open loops';
     const habitPercent = d.habit.percent == null ? 0 : d.habit.percent;
     return `${topbar()}${activeTimerBanner()}<section class="glass greeting-card"><span class="eyebrow">Your daily check-in</span><p class="greeting-copy">${esc(greeting)}</p><span class="tagline">Less planning. More doing. Honest feedback.</span></section>
@@ -76,8 +89,7 @@
 
   function tasks(pageState) {
     const state = getState(); const filter = pageState.taskFilter || 'open';
-    const list = state.tasks.filter(t => filter === 'all' || (filter === 'completed' ? t.status === 'done' : t.status === 'open'))
-      .sort((a, b) => (a.dueDate || '9999-12-31').localeCompare(b.dueDate || '9999-12-31'));
+    const list = sortTasksByDueAndPriority(state.tasks.filter(t => filter === 'all' || (filter === 'completed' ? t.status === 'done' : t.status === 'open')));
     const tabs = ['open','completed','all'].map(tab => `<button type="button" class="filter-chip ${filter === tab ? 'active' : ''}" data-action="task-filter" data-task-filter="${tab}" aria-pressed="${filter === tab}">${esc(MATE.i18n.label(tab))} <span class="mono">${state.tasks.filter(t => tab === 'all' || (tab === 'completed' ? t.status === 'done' : t.status === 'open')).length}</span></button>`).join('');
     const overdue = state.tasks.filter(t => t.status === 'open' && t.dueDate && t.dueDate < dateKey()).length;
     return `${topbar()}${activeTimerBanner()}${heading('Tasks','The board',overdue ? `${overdue} overdue. They’re not going to reschedule themselves.` : 'A clear list, a running timer, and fewer places to hide.','<button class="button primary" type="button" data-action="add-task">+ Add task</button>')}

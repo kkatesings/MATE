@@ -5,7 +5,7 @@
   const screens = MATE.screens;
   const analytics = MATE.analytics;
   const matt = MATE.matt;
-  const appState = { page: 'welcome', taskFilter: 'open', statsPeriod: 'weekly', welcomeGreeting: '', homeGreeting: '', habitWeekOffset: 0, selectedHabitDate: '' };
+  const appState = { page: 'welcome', taskFilter: 'open', statsPeriod: 'weekly', welcomeGreeting: '', homeGreeting: '', habitWeekOffset: 0, selectedHabitDate: '', lastSavedTaskName: '' };
   let taskSubmitting = false;
   let pendingDeleteTask = null;
   let pendingDeleteHabit = null;
@@ -163,7 +163,8 @@
         render();
         toast('Task updated.');
       } else {
-        data.addTask(taskFields);
+        const savedTask = data.addTask(taskFields);
+        appState.lastSavedTaskName = savedTask.name;
         taskSubmitting = false;
         appState.page = 'task-confirmation';
         render();

@@ -92,9 +92,10 @@
     return `${topbar()}${heading('Add a task','One clear next step','Give it a name. The rest can be filled in later if you are in a hurry.')}
       <section class="glass panel" style="max-width:760px">${form}</section>${persistenceNote()}`;
   }
-  function taskConfirmation() {
-    const state = getState(); const task = state.tasks[0];
-    const title = task ? esc(task.name) : 'Another move on the board.';
+  function taskConfirmation(pageState) {
+    const title = pageState && pageState.lastSavedTaskName
+      ? esc(pageState.lastSavedTaskName)
+      : 'Another move on the board.';
     return topbar() + '<section class="glass confirm-card"><div class="confirm-icon" aria-hidden="true">✓</div><span class="eyebrow">Task saved</span><h1>' + title + '</h1><p class="muted">' + esc(MATE.matt.message('taskConfirmation')) + '</p><div class="actions"><button type="button" class="button" data-action="confirmation-done">I’m done</button><button type="button" class="button primary" data-action="add-another">Add another</button></div></section>';
   }
 
@@ -343,7 +344,7 @@
       case 'home': content = home(pageState.homeGreeting); break;
       case 'tasks': content = tasks(pageState); break;
       case 'task-form': content = taskForm(); break;
-      case 'task-confirmation': content = taskConfirmation(); break;
+      case 'task-confirmation': content = taskConfirmation(pageState); break;
       case 'habits': content = habitHistory(pageState); break;
       case 'habit-categories': content = habitCategories(); break;
       case 'stats': content = stats(pageState); break;

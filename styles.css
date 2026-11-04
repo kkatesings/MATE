@@ -36,13 +36,17 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes liquid { 0%,100% { transform: translate(-50%,-50%) rotate(0) scale(1); } 50% { transform: translate(-45%,-55%) rotate(180deg) scale(1.12); } }
 @keyframes sheen { 0% { transform: translateX(-130%) rotate(20deg); } 100% { transform: translateX(180%) rotate(20deg); } }
-@keyframes orbit-one { from { transform: rotate(8deg) scaleY(.54); } to { transform: rotate(368deg) scaleY(.54); } }
-@keyframes orbit-two { from { transform: rotate(66deg) scaleY(.54); } to { transform: rotate(426deg) scaleY(.54); } }
-@keyframes orbit-three { from { transform: rotate(-53deg) scaleY(.54); } to { transform: rotate(307deg) scaleY(.54); } }
+@keyframes orbit-one { from { transform: translate(-50%,-50%) rotate(8deg) scaleY(.54); } to { transform: translate(-50%,-50%) rotate(368deg) scaleY(.54); } }
+@keyframes orbit-two { from { transform: translate(-50%,-50%) rotate(66deg) scaleY(.54); } to { transform: translate(-50%,-50%) rotate(426deg) scaleY(.54); } }
+@keyframes orbit-three { from { transform: translate(-50%,-50%) rotate(-53deg) scaleY(.54); } to { transform: translate(-50%,-50%) rotate(307deg) scaleY(.54); } }
 @keyframes nucleus-pulse { 0%,100% { opacity: .78; transform: scale(.92); } 50% { opacity: 1; transform: scale(1.08); } }
 
 .app-shell { width: min(1160px, 100%); min-height: 100vh; margin: 0 auto; padding: 32px 34px 138px; animation: rise .4s ease both; }
-.topbar { display: flex; align-items: center; justify-content: space-between; margin: 0 0 32px; }
+.topbar { position: relative; z-index: 25; display: flex; align-items: center; justify-content: space-between; margin: 0 0 32px; }
+.topbar-menu-wrap { position: relative; display: flex; align-items: center; }
+.topbar-menu { display: flex; align-items: center; gap: 16px; }
+.mobile-menu-toggle { display: none; }
+.menu-settings-label { display: none; }
 .brand { display: inline-flex; align-items: center; gap: 11px; color: var(--text); text-decoration: none; }
 .brand-mark { display: grid; width: 38px; height: 38px; place-items: center; border: 1px solid rgba(73,230,221,.4); border-radius: 13px; color: var(--aqua); background: linear-gradient(145deg, rgba(73,230,221,.19), rgba(36,184,196,.04)); box-shadow: inset 0 1px rgba(255,255,255,.13), 0 0 24px rgba(73,230,221,.1); font-size: 14px; font-weight: 800; letter-spacing: -.08em; }
 .brand-name { font-size: 14px; font-weight: 800; letter-spacing: .17em; }
@@ -198,12 +202,12 @@ h3 { margin-bottom: 8px; font-size: 14px; }
 .welcome-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
 .welcome-orbit { position: relative; display: grid; width: 220px; height: 220px; place-items: center; margin: 28px 0; }
 .welcome-orbit::before { position: absolute; inset: 28px; border-radius: 50%; content: ''; background: radial-gradient(circle,rgba(73,230,221,.11),rgba(73,230,221,.025) 45%,transparent 72%); filter: blur(8px); }
-.atom-scene { position: relative; width: 210px; height: 210px; perspective: 700px; }
+.atom-scene { position: relative; width: 95%; height: 95%; perspective: 700px; }
 .atom-nucleus { position: absolute; top: 50%; left: 50%; display: block; width: 25px; height: 25px; transform: translate(-50%,-50%); animation: nucleus-pulse 5.5s ease-in-out infinite; }
 .atom-nucleus::before { position: absolute; inset: 1px; border: 1px solid rgba(195,255,248,.75); border-radius: 50%; content: ''; background: radial-gradient(circle at 30% 25%,#eafffc 0,#7af5e8 32%,#22aebd 78%); box-shadow: 0 0 19px rgba(73,230,221,.65),0 0 42px rgba(36,184,196,.23); }
 .atom-nucleus i { position: absolute; z-index: 1; width: 5px; height: 5px; border-radius: 50%; background: rgba(232,255,251,.9); box-shadow: 0 0 8px rgba(232,255,251,.8); }
 .atom-nucleus i:nth-child(1) { top: 3px; left: 9px; }.atom-nucleus i:nth-child(2) { top: 10px; left: 2px; }.atom-nucleus i:nth-child(3) { top: 14px; right: 2px; }.atom-nucleus i:nth-child(4) { right: 5px; bottom: 1px; }
-.atom-orbit { position: absolute; top: 50%; left: 50%; width: 190px; height: 190px; border: 1px solid rgba(100,226,224,.21); border-radius: 50%; transform-origin: center; }
+.atom-orbit { position: absolute; top: 50%; left: 50%; width: 90%; height: 90%; border: 1px solid rgba(100,226,224,.21); border-radius: 50%; transform-origin: center; }
 .atom-orbit::before { position: absolute; inset: 12px 29px; border: 1px solid rgba(133,247,239,.08); border-radius: 50%; content: ''; }
 .atom-orbit i { position: absolute; top: -4px; left: calc(50% - 4px); width: 8px; height: 8px; border: 1px solid rgba(216,255,251,.8); border-radius: 50%; background: #64f5e8; box-shadow: 0 0 12px rgba(73,230,221,.9),0 0 25px rgba(73,230,221,.34); }
 .orbit-one { animation: orbit-one 28s linear infinite; }
@@ -261,17 +265,45 @@ h3 { margin-bottom: 8px; font-size: 14px; }
 .note { padding: 12px 14px; border: 1px solid rgba(73,230,221,.13); border-radius: 13px; color: var(--muted); background: rgba(73,230,221,.035); font-size: 10px; line-height: 1.6; }
 
 @media (max-width: 760px) {
+  html.welcome-screen-active, body.welcome-screen-active { width: 100%; height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; overscroll-behavior: none; }
   .app-shell { padding: 22px 18px 130px; }
   .dashboard-grid { grid-template-columns: 1fr; }
   .grid-4 { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .grid-3 { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .stats-toolbar { align-items: flex-start; }
   .page-heading { align-items: flex-start; flex-direction: column; }
+  .topbar { display: grid; grid-template-columns: auto minmax(0,1fr) auto; column-gap: 10px; row-gap: 0; margin-bottom: 24px; }
+  .brand-name { display: none; }
+  .top-date { justify-self: start; max-width: 100%; overflow: hidden; font-size: clamp(7px,2.1vw,9px); letter-spacing: .045em; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+  .topbar-menu-wrap { justify-self: end; }
+  .mobile-menu-toggle { display: inline-grid; width: 38px; height: 38px; border-color: var(--border); color: var(--aqua); background: rgba(255,255,255,.04); font-size: 17px; }
+  .topbar-menu { position: absolute; top: calc(100% + 9px); right: 0; display: none; width: min(88vw,340px); max-height: min(72dvh,520px); overflow: auto; padding: 10px; border: 1px solid var(--border-bright); border-radius: 17px; background: rgba(5,20,27,.97); box-shadow: var(--shadow),0 12px 35px rgba(0,0,0,.45); backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); }
+  .topbar-menu-wrap.is-open .topbar-menu { display: grid; gap: 6px; }
+  .topbar-menu .cloud-account { display: flex; flex-direction: column; align-items: stretch; gap: 3px; width: 100%; margin: 0; }
+  .topbar-menu .cloud-account > * { max-width: 100%; }
+  .topbar-menu .cloud-account-name { padding: 9px 10px 5px; font-size: 12px; }
+  .topbar-menu .cloud-status { display: block; padding: 0 10px 8px; font-size: 10px; }
+  .topbar-menu .cloud-policy-link, .topbar-menu .cloud-debug-link { padding: 9px 10px; border-bottom: 1px solid rgba(160,235,240,.1); font-size: 12px; text-align: left; }
+  .topbar-menu .auth-button { width: 100%; min-height: 38px; padding: 8px 10px; font-size: 11px; }
+  .topbar-menu .tone-settings-link { display: flex; width: 100%; height: auto; min-height: 40px; justify-content: flex-start; gap: 10px; padding: 8px 10px; border-color: var(--border); color: var(--text); background: rgba(255,255,255,.055); text-align: left; }
+  .menu-settings-label { display: inline; font-size: 12px; font-weight: 700; }
+  .app-shell.welcome-screen { display: flex; width: 100%; max-width: none; height: 100vh; height: 100dvh; min-height: 0; flex-direction: column; overflow: hidden; padding: max(7px,env(safe-area-inset-top)) 14px calc(86px + env(safe-area-inset-bottom)); }
+  .app-shell.welcome-screen .topbar { flex: 0 0 auto; margin: 0; }
+  .app-shell.welcome-screen .welcome { display: grid; width: 100%; min-width: 0; min-height: 0; flex: 1 1 auto; grid-template-areas: 'atom' 'quote' 'title' 'system' 'tagline' 'actions'; align-content: center; justify-items: center; gap: 0; overflow: hidden; padding: 0; }
+  .app-shell.welcome-screen .welcome > * { min-width: 0; max-width: 100%; }
+  .app-shell.welcome-screen .welcome-orbit { grid-area: atom; width: clamp(76px,14svh,112px); height: clamp(76px,14svh,112px); flex: 0 0 auto; margin: 0 0 7px; }
+  .app-shell.welcome-screen .welcome-greeting { grid-area: quote; width: min(100%,34ch); min-height: 0; margin: 0 0 11px; color: #e4f0f2; font-size: clamp(22px,5.8vw,29px); font-weight: 600; line-height: 1.22; }
+  .app-shell.welcome-screen .welcome h1 { grid-area: title; margin: 0; font-size: clamp(30px,8vw,42px); line-height: .94; }
+  .app-shell.welcome-screen .welcome .welcome-name { grid-area: system; margin: 5px 0 2px; font-size: 7px; letter-spacing: .16em; }
+  .app-shell.welcome-screen .welcome .tagline { grid-area: tagline; margin: 0 0 12px; font-size: 11px; }
+  .app-shell.welcome-screen .welcome-actions { grid-area: actions; width: 100%; gap: 8px; }
+  .app-shell.welcome-screen .welcome-actions .button { min-height: 38px; padding-inline: 12px; font-size: 11px; }
+  .app-shell.welcome-screen, .app-shell.welcome-screen .welcome { overscroll-behavior: none; }
+  .app-shell.welcome-screen { touch-action: pan-y; }
 }
 @media (max-width: 480px) {
   .app-shell { padding: 18px 14px 124px; }
-  .topbar { margin-bottom: 25px; }
-  .top-date { max-width: 48%; text-align: right; font-size: 9px; }
+  .topbar { margin-bottom: 16px; }
   .grid-2, .grid-3 { grid-template-columns: 1fr; }
   .grid-4 { gap: 10px; }
   .stat-card { min-height: 114px; padding: 16px; }
@@ -285,8 +317,16 @@ h3 { margin-bottom: 8px; font-size: 14px; }
   .nav-item { min-width: 48px; padding-inline: 5px; }
   .nav-add { width: 53px; height: 53px; }
   .weekly-chart { gap: 6px; }
-  .welcome-orbit { width: 180px; height: 180px; }
+  .app-shell.welcome-screen .welcome-orbit { width: clamp(70px,min(24vw,14svh),112px); height: clamp(70px,min(24vw,14svh),112px); margin: 0 0 7px; }
   .focus-chart-columns { gap: 4px; }
+}
+@media (max-width: 760px) and (max-height: 720px) {
+  .app-shell.welcome-screen { padding-bottom: calc(82px + env(safe-area-inset-bottom)); }
+  .app-shell.welcome-screen .welcome-orbit { width: clamp(64px,12svh,88px); height: clamp(64px,12svh,88px); margin-bottom: 4px; }
+  .app-shell.welcome-screen .welcome-greeting { margin-bottom: 7px; font-size: clamp(20px,5.4vw,25px); line-height: 1.18; }
+  .app-shell.welcome-screen .welcome .welcome-name { margin-top: 3px; }
+  .app-shell.welcome-screen .welcome .tagline { margin-bottom: 8px; }
+  .app-shell.welcome-screen .welcome-actions .button { min-height: 35px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *,*::before,*::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
@@ -389,8 +429,7 @@ h3 { margin-bottom: 8px; font-size: 14px; }
 .auth-button { min-height: 34px; padding: 7px 10px; font-size: 10px; }
 .danger-button { border-color: rgba(255,116,116,.35); color: #ffc3c3; background: rgba(96,30,38,.34); }
 .danger-button:hover { border-color: rgba(255,116,116,.65); background: rgba(120,35,44,.48); }
-@media (max-width: 760px) { .topbar { flex-wrap: wrap; row-gap: 10px; } .cloud-account { margin-left: auto; } }
-@media (max-width: 480px) { .cloud-account { flex-wrap: wrap; justify-content: flex-end; } .cloud-account-name { max-width: 75px; } .cloud-status { display: none; } .auth-button { padding-inline: 8px; } }
+@media (max-width: 760px) { .topbar-menu .cloud-account { flex-wrap: nowrap; justify-content: flex-start; } }
 .cloud-policy-link { color: var(--aqua); font-size: 9px; text-decoration: none; white-space: nowrap; }
 .cloud-policy-link:hover { text-decoration: underline; }
 .cloud-debug-link { padding: 0; border: 0; color: var(--muted); background: transparent; font: inherit; font-size: 9px; white-space: nowrap; cursor: pointer; }

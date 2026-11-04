@@ -17,7 +17,7 @@
   };
   const options = (items, selected) => items.map(item => `<option value="${esc(item)}" ${item === selected ? 'selected' : ''}>${esc(MATE.i18n.label(item))}</option>`).join('');
   const categoryOptions = selected => `${options(getCategories(), selected)}<option value="${NEW_CATEGORY_VALUE}">New category</option>`;
-  const topbar = () => `<header class="topbar"><a class="brand" href="#" data-action="welcome" aria-label="MATE home"><span class="brand-mark">M</span><span class="brand-name">MATE</span></a><time class="top-date">${fmtLongDate(new Date())}</time><button class="icon-button tone-settings-link" type="button" data-nav="matt-settings" aria-label="Matt settings" title="Matt settings">⚙</button></header>`;
+  const topbar = () => `<header class="topbar"><a class="brand" href="#" data-action="welcome" aria-label="MATE home"><span class="brand-mark">M</span><span class="brand-name">MATE</span></a><time class="top-date">${fmtLongDate(new Date())}</time><div class="topbar-menu-wrap"><button class="icon-button mobile-menu-toggle" type="button" data-action="toggle-mobile-menu" aria-label="Account and settings menu" aria-controls="topbar-menu" aria-expanded="false"><span aria-hidden="true">☰</span></button><nav class="topbar-menu" id="topbar-menu" aria-label="Account and settings"><div id="cloud-account" class="cloud-account"></div><button class="icon-button tone-settings-link" type="button" data-nav="matt-settings" aria-label="Matt settings" title="Matt settings"><span aria-hidden="true">⚙</span><span class="menu-settings-label">Settings</span></button></nav></div></header>`;
   const heading = (title, eyebrow, subtitle = '', action = '') => `<div class="page-heading"><div><span class="eyebrow">${esc(eyebrow)}</span><h1>${esc(title)}</h1>${subtitle ? `<p class="subheading">${esc(subtitle)}</p>` : ''}</div>${action}</div>`;
   const statCard = (label, value, note, icon, trend = null) => {
     const mark = trend
@@ -280,15 +280,8 @@
     return name ? 'Welcome, ' + name : 'Welcome';
   }
   function updateCloudAccount() {
-    const gear = root.document.querySelector('.topbar .tone-settings-link');
-    if (!gear || !gear.parentNode) return;
     let holder = root.document.getElementById('cloud-account');
-    if (!holder) {
-      holder = root.document.createElement('div');
-      holder.id = 'cloud-account';
-      holder.className = 'cloud-account';
-      gear.parentNode.insertBefore(holder, gear);
-    }
+    if (!holder) return;
     const cloud = MATE.cloudSync ? MATE.cloudSync.state() : { configured: false, user: null, status: 'setup', privacyHref: './privacy.html', privacyReady: false, cloudConsentGranted: false };
     const privacyLink = '<a class="cloud-policy-link" href="' + esc(cloud.privacyHref || './privacy.html') + '" target="_blank" rel="noopener noreferrer">Privacy</a>';
     const debugButton = '<button class="cloud-debug-link" type="button" data-action="cloud-diagnostics">Sync help</button>';
@@ -374,6 +367,9 @@
       default: content = welcome(pageState);
     }
     root.document.getElementById('app').innerHTML = content;
+    root.document.getElementById('app').classList.toggle('welcome-screen', page === 'welcome');
+    root.document.documentElement.classList.toggle('welcome-screen-active', page === 'welcome');
+    root.document.body.classList.toggle('welcome-screen-active', page === 'welcome');
     root.document.getElementById('bottom-nav').innerHTML = nav(page === 'task-form' || page === 'task-confirmation' ? '' : page === 'habit-categories' ? 'habits' : page);
   }
   function modal(title, body, actions, className = '') {

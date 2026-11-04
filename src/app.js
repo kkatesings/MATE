@@ -18,6 +18,13 @@
     region.appendChild(node); root.setTimeout(() => node.remove(), 3600);
   }
   function render() { screens.render(appState.page, appState); screens.updateCloudAccount(); }
+  function setMobileMenuOpen(open) {
+    const wrap = document.querySelector('.topbar-menu-wrap');
+    const toggle = wrap && wrap.querySelector('.mobile-menu-toggle');
+    if (!wrap || !toggle) return;
+    wrap.classList.toggle('is-open', open);
+    toggle.setAttribute('aria-expanded', String(open));
+  }
   function navigate(page) {
     if (page === 'home') appState.homeGreeting = matt.homeGreeting();
     let habitChoice = null;
@@ -200,10 +207,20 @@
     updateMattSettingsView(preferences, 'Release the slider to save this setting.');
   });
   document.addEventListener('click', event => {
-    const target = event.target.closest('button,[data-nav],[data-action]'); if (!target) return;
-    if (target.dataset.nav) { navigate(target.dataset.nav); return; }
+    const target = event.target.closest('button,a,[data-nav],[data-action]');
+    const menuWrap = document.querySelector('.topbar-menu-wrap');
+    const menuIsOpen = !!(menuWrap && menuWrap.classList.contains('is-open'));
+    if (menuIsOpen && (!target || !menuWrap.contains(target))) setMobileMenuOpen(false);
+    if (menuIsOpen && target && target.tagName === 'A' && menuWrap.contains(target)) setMobileMenuOpen(false);
+    if (!target) return;
+    if (target.dataset.nav) { setMobileMenuOpen(false); navigate(target.dataset.nav); return; }
     const action = target.dataset.action;
     if (!action) return;
+    if (action === 'toggle-mobile-menu') {
+      setMobileMenuOpen(!(menuWrap && menuWrap.classList.contains('is-open')));
+      return;
+    }
+    if (menuWrap && menuWrap.contains(target)) setMobileMenuOpen(false);
     switch (action) {
       case 'welcome': event.preventDefault(); appState.welcomeGreeting = matt.welcomeGreeting(); appState.page = 'welcome'; render(); break;
       case 'enter-home': navigate('home'); break;
